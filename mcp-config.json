@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ninjaone": {
+      "command": "node",
+      "args": [
+        "C:\\PATH\\TO\\NinjaOneMCP\\dist\\index.js"
+      ],
+      "cwd": "C:\\PATH\\TO\\NinjaOneMCP"
+    }
+  }
+}
