@@ -65,6 +65,8 @@ cp .env.example .env
 # Edit .env with your NinjaONE credentials
 ```
 
+**⚠️ Important:** See [SETUP.md](SETUP.md) for detailed configuration instructions, especially for MCP client integration.
+
 ### Configuration
 
 Edit your `.env` file:
@@ -144,21 +146,28 @@ await ninjaAPI.applyDeviceOSPatches(12345, patchArray);
 
 ### Claude Desktop Configuration
 
-Add to your Claude Desktop config:
+**Important:** When using with Claude Desktop or other MCP clients, environment variables must be explicitly passed in the configuration. The `.env` file is NOT automatically loaded by MCP clients.
+
+Add to your Claude Desktop config (`%APPDATA%\Claude\claude_desktop_config.json` on Windows):
 
 ```json
 {
   "mcpServers": {
     "ninjaone": {
       "command": "node",
-      "args": ["C:\\Path\\to\\source\\NinjaOneMCP\\dist\\index.js"],
+      "args": ["C:\\Path\\to\\NinjaOneMCP\\dist\\index.js"],
       "env": {
-        "NINJA_ACCESS_TOKEN": "your_token_here"
+        "NINJA_ACCESS_TOKEN": "your_actual_token_here",
+        "NINJA_BASE_URL": "https://api.ninjarmm.com",
+        "MCP_MODE": "stdio",
+        "LOG_LEVEL": "info"
       }
     }
   }
 }
 ```
+
+**Note:** You MUST include all required environment variables in the `env` section. The server will not read the `.env` file when launched by an MCP client.
 
 ### Available Tools
 
