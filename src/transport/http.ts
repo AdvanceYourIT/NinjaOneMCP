@@ -30,7 +30,7 @@ export async function createHttpServer(mcpServer: Server, port: number): Promise
     res.json({
       status: 'healthy',
       service: 'ninjaone-mcp-server',
-      version: '1.0.0',
+      version: '1.2.0',
       timestamp: new Date().toISOString(),
       transport: 'http'
     });
@@ -40,7 +40,7 @@ export async function createHttpServer(mcpServer: Server, port: number): Promise
   app.get('/info', (req: Request, res: Response) => {
     res.json({
       name: 'ninjaone-mcp-server',
-      version: '1.0.0',
+      version: '1.2.0',
       description: 'NinjaONE RMM MCP Server with HTTP transport',
       capabilities: {
         tools: true,

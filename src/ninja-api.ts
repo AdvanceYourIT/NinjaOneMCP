@@ -1,13 +1,42 @@
 export class NinjaOneAPI {
-  private baseUrl: string;
+  private baseUrl: string | null = null;
   private clientId: string;
   private clientSecret: string;
   private accessToken: string | null = null;
   private tokenExpiry: number | null = null;
   private isConfigured: boolean;
+  private baseUrlExplicit: boolean = false;
+
+  private static readonly REGION_MAP: Record<string, string> = {
+    us: 'https://app.ninjarmm.com',
+    us2: 'https://us2.ninjarmm.com',
+    eu: 'https://eu.ninjarmm.com',
+    ca: 'https://ca.ninjarmm.com',
+    oc: 'https://oc.ninjarmm.com',
+  };
+
+  private static readonly DEFAULT_CANDIDATES: string[] = [
+    'https://app.ninjarmm.com',
+    'https://us2.ninjarmm.com',
+    'https://eu.ninjarmm.com',
+    'https://ca.ninjarmm.com',
+    'https://oc.ninjarmm.com',
+  ];
 
   constructor() {
-    this.baseUrl = process.env.NINJA_BASE_URL || 'https://api.ninjarmm.com';
+    const envBase = process.env.NINJA_BASE_URL;
+    const envRegion = (process.env.NINJA_REGION || '').toLowerCase();
+
+    if (envBase) {
+      this.baseUrl = this.normalizeBaseUrl(envBase);
+      this.baseUrlExplicit = true;
+    } else if (envRegion && NinjaOneAPI.REGION_MAP[envRegion]) {
+      this.baseUrl = NinjaOneAPI.REGION_MAP[envRegion];
+      this.baseUrlExplicit = true;
+    } else {
+      // Will auto-detect on first token request
+      this.baseUrl = null;
+    }
     this.clientId = process.env.NINJA_CLIENT_ID || '';
     this.clientSecret = process.env.NINJA_CLIENT_SECRET || '';
     this.isConfigured = !!(this.clientId && this.clientSecret);
@@ -29,8 +58,37 @@ export class NinjaOneAPI {
       return this.accessToken;
     }
 
-    // Get new token using client credentials flow
-    const tokenUrl = `${this.baseUrl}/ws/oauth/token`;
+    // Ensure baseUrl is resolved (auto-detect if needed)
+    if (!this.baseUrl || !this.baseUrlExplicit) {
+      const tried: string[] = [];
+      const candidates = this.getCandidateBaseUrls();
+      for (const candidate of candidates) {
+        tried.push(candidate);
+        try {
+          const token = await this.requestToken(candidate);
+          this.baseUrl = candidate;
+          this.baseUrlExplicit = true; // lock after success
+          this.accessToken = token.access_token;
+          this.tokenExpiry = Date.now() + (token.expires_in * 1000);
+          console.error(`OAuth token acquired successfully (region: ${candidate})`);
+          return this.accessToken!;
+        } catch (e) {
+          // try next
+        }
+      }
+      throw new Error(`Failed to acquire OAuth token: no candidate base URL succeeded. Tried: ${tried.join(', ')}`);
+    }
+
+    // Get new token using resolved baseUrl
+    const token = await this.requestToken(this.baseUrl);
+    this.accessToken = token.access_token;
+    this.tokenExpiry = Date.now() + (token.expires_in * 1000);
+    console.error('OAuth token acquired successfully');
+    return this.accessToken!;
+  }
+
+  private async requestToken(baseUrl: string): Promise<{ access_token: string; expires_in: number }> {
+    const tokenUrl = `${baseUrl}/ws/oauth/token`;
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: this.clientId,
@@ -40,28 +98,36 @@ export class NinjaOneAPI {
 
     const response = await fetch(tokenUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: body.toString()
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
     });
 
     if (!response.ok) {
       throw new Error(`OAuth token request failed: ${response.status} ${response.statusText}`);
     }
+    return await response.json();
+  }
 
-    const tokenData = await response.json();
-    this.accessToken = tokenData.access_token;
-    this.tokenExpiry = Date.now() + (tokenData.expires_in * 1000);
-    
-    console.error('OAuth token acquired successfully');
-    return this.accessToken!
+  private normalizeBaseUrl(url: string): string {
+    if (!/^https?:\/\//i.test(url)) {
+      return `https://${url}`;
+    }
+    return url;
+  }
+
+  private getCandidateBaseUrls(): string[] {
+    const fromEnv = (process.env.NINJA_BASE_URLS || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(u => this.normalizeBaseUrl(u));
+    return (fromEnv.length > 0 ? fromEnv : NinjaOneAPI.DEFAULT_CANDIDATES);
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
     const token = await this.getAccessToken();
-    
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+    const base = this.baseUrl || NinjaOneAPI.DEFAULT_CANDIDATES[0];
+    const response = await fetch(`${base}${endpoint}`, {
       ...options,
       headers: { 
         'Authorization': `Bearer ${token}`, 
@@ -75,6 +141,26 @@ export class NinjaOneAPI {
     }
     
     return await response.json();
+  }
+
+  // Region utilities
+  public listRegions(): { region: string; baseUrl: string }[] {
+    return Object.entries(NinjaOneAPI.REGION_MAP).map(([region, baseUrl]) => ({ region, baseUrl }));
+  }
+
+  public setRegion(region: string): void {
+    const key = (region || '').toLowerCase();
+    const mapped = NinjaOneAPI.REGION_MAP[key];
+    if (!mapped) throw new Error(`Unknown region: ${region}`);
+    this.setBaseUrl(mapped);
+  }
+
+  public setBaseUrl(url: string): void {
+    this.baseUrl = this.normalizeBaseUrl(url);
+    this.baseUrlExplicit = true;
+    // reset token cache so it refreshes against new base
+    this.accessToken = null;
+    this.tokenExpiry = null;
   }
 
   private buildQuery(params: Record<string, any>): string {

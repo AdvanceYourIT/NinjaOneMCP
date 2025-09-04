@@ -30,6 +30,22 @@ const TOOLS = [
     }
   },
   {
+    name: 'list_regions',
+    description: 'List supported NinjaONE regions and base URLs',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'set_region',
+    description: 'Set region or base URL for API requests',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        region: { type: 'string', description: 'Region key (us, us2, eu, ca, oc)' },
+        baseUrl: { type: 'string', description: 'Custom base URL (overrides region if provided)' }
+      }
+    }
+  },
+  {
     name: 'get_device',
     description: 'Get detailed information about a specific device',
     inputSchema: {
@@ -48,6 +64,18 @@ const TOOLS = [
       properties: {
         id: { type: 'number', description: 'Device ID' },
         mode: { type: 'string', enum: ['NORMAL', 'FORCED'], description: 'Reboot mode' }
+      },
+      required: ['id', 'mode']
+    }
+  },
+  {
+    name: 'set_device_maintenance',
+    description: 'Set maintenance mode for a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' },
+        mode: { type: 'string', enum: ['ON', 'OFF'], description: 'Maintenance mode' }
       },
       required: ['id', 'mode']
     }
@@ -86,6 +114,17 @@ const TOOLS = [
     }
   },
   {
+    name: 'get_device_dashboard_url',
+    description: 'Get the dashboard URL for a specific device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' }
+      },
+      required: ['id']
+    }
+  },
+  {
     name: 'search_devices_by_name',
     description: 'Search devices by system name (client-side filtering)',
     inputSchema: {
@@ -106,6 +145,299 @@ const TOOLS = [
         limit: { type: 'number', description: 'Maximum results to return (default: 20)' }
       }
     }
+  },
+
+  // Device Control & Scripting
+  {
+    name: 'run_device_script',
+    description: 'Run a script on a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' },
+        scriptId: { type: 'string', description: 'Script ID' },
+        parameters: { type: 'object', description: 'Optional script parameters' },
+        runAs: { type: 'string', description: 'Optional run-as user context' }
+      },
+      required: ['id', 'scriptId']
+    }
+  },
+  {
+    name: 'get_device_scripting_options',
+    description: 'Get scripting options for a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'control_windows_service',
+    description: 'Control a Windows service on a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' },
+        serviceId: { type: 'string', description: 'Service ID' },
+        action: { type: 'string', description: 'Action to perform (e.g., START, STOP, RESTART)' }
+      },
+      required: ['id', 'serviceId', 'action']
+    }
+  },
+  {
+    name: 'configure_windows_service',
+    description: 'Configure a Windows service startup type on a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' },
+        serviceId: { type: 'string', description: 'Service ID' },
+        startupType: { type: 'string', description: 'Startup type (e.g., AUTOMATIC, MANUAL, DISABLED)' }
+      },
+      required: ['id', 'serviceId', 'startupType']
+    }
+  },
+  {
+    name: 'get_device_owner',
+    description: 'Get the owner of a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'set_device_owner',
+    description: 'Set the owner of a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' },
+        ownerUid: { type: 'string', description: 'Owner UID' }
+      },
+      required: ['id', 'ownerUid']
+    }
+  },
+
+  // Device Patching
+  {
+    name: 'scan_device_os_patches',
+    description: 'Scan for OS patches on a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'apply_device_os_patches',
+    description: 'Apply OS patches on a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' },
+        patches: { type: 'array', items: { type: 'object' }, description: 'List of OS patches to apply' }
+      },
+      required: ['id', 'patches']
+    }
+  },
+  {
+    name: 'scan_device_software_patches',
+    description: 'Scan for software patches on a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'apply_device_software_patches',
+    description: 'Apply software patches on a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' },
+        patches: { type: 'array', items: { type: 'object' }, description: 'List of software patches to apply' }
+      },
+      required: ['id', 'patches']
+    }
+  },
+
+  // Organizations - details
+  {
+    name: 'get_organization',
+    description: 'Get organization details by ID',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'number', description: 'Organization ID' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'get_organization_locations',
+    description: 'Get locations for an organization',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'number', description: 'Organization ID' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'get_organization_policies',
+    description: 'Get policies for an organization',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'number', description: 'Organization ID' } },
+      required: ['id']
+    }
+  },
+  {
+    name: 'generate_organization_installer',
+    description: 'Generate installer for an organization/location',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        installerType: { type: 'string', description: 'Installer type (e.g., WINDOWS, MAC, LINUX)' },
+        organizationId: { type: 'number', description: 'Organization ID (optional if implied by auth)' },
+        locationId: { type: 'number', description: 'Location ID (optional)' }
+      },
+      required: ['installerType']
+    }
+  },
+
+  // Alerts - details
+  {
+    name: 'get_alert',
+    description: 'Get a specific alert by UID',
+    inputSchema: {
+      type: 'object',
+      properties: { uid: { type: 'string', description: 'Alert UID' } },
+      required: ['uid']
+    }
+  },
+  {
+    name: 'reset_alert',
+    description: 'Reset/acknowledge an alert by UID',
+    inputSchema: {
+      type: 'object',
+      properties: { uid: { type: 'string', description: 'Alert UID' } },
+      required: ['uid']
+    }
+  },
+  {
+    name: 'get_device_alerts',
+    description: 'Get alerts for a specific device',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'number', description: 'Device ID' }, lang: { type: 'string', description: 'Language code' } },
+      required: ['id']
+    }
+  },
+
+  // Users & Roles
+  {
+    name: 'get_end_users',
+    description: 'List end users',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'get_end_user',
+    description: 'Get an end user by ID',
+    inputSchema: { type: 'object', properties: { id: { type: 'number' } }, required: ['id'] }
+  },
+  {
+    name: 'get_technicians',
+    description: 'List technicians',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'get_technician',
+    description: 'Get a technician by ID',
+    inputSchema: { type: 'object', properties: { id: { type: 'number' } }, required: ['id'] }
+  },
+  {
+    name: 'add_role_members',
+    description: 'Add users to a role',
+    inputSchema: { type: 'object', properties: { roleId: { type: 'number' }, userIds: { type: 'array', items: { type: 'number' } } }, required: ['roleId', 'userIds'] }
+  },
+  {
+    name: 'remove_role_members',
+    description: 'Remove users from a role',
+    inputSchema: { type: 'object', properties: { roleId: { type: 'number' }, userIds: { type: 'array', items: { type: 'number' } } }, required: ['roleId', 'userIds'] }
+  },
+
+  // Contacts
+  {
+    name: 'get_contacts',
+    description: 'List contacts',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'get_contact',
+    description: 'Get a contact by ID',
+    inputSchema: { type: 'object', properties: { id: { type: 'number' } }, required: ['id'] }
+  },
+  {
+    name: 'create_contact',
+    description: 'Create a contact',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        organizationId: { type: 'number' },
+        firstName: { type: 'string' },
+        lastName: { type: 'string' },
+        email: { type: 'string' },
+        phone: { type: 'string' },
+        jobTitle: { type: 'string' }
+      },
+      required: ['organizationId', 'firstName', 'lastName', 'email']
+    }
+  },
+  {
+    name: 'update_contact',
+    description: 'Update a contact',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number' },
+        firstName: { type: 'string' },
+        lastName: { type: 'string' },
+        email: { type: 'string' },
+        phone: { type: 'string' },
+        jobTitle: { type: 'string' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'delete_contact',
+    description: 'Delete a contact',
+    inputSchema: { type: 'object', properties: { id: { type: 'number' } }, required: ['id'] }
+  },
+
+  // Device approvals and policy
+  {
+    name: 'approve_devices',
+    description: 'Approve or deny multiple devices',
+    inputSchema: { type: 'object', properties: { mode: { type: 'string', description: 'e.g., APPROVE or DENY' }, deviceIds: { type: 'array', items: { type: 'number' } } }, required: ['mode', 'deviceIds'] }
+  },
+  {
+    name: 'get_device_policy_overrides',
+    description: 'Get policy overrides for a device',
+    inputSchema: { type: 'object', properties: { id: { type: 'number' } }, required: ['id'] }
+  },
+  {
+    name: 'get_policies',
+    description: 'List policies (optionally templates only)',
+    inputSchema: { type: 'object', properties: { templateOnly: { type: 'boolean' } } }
   },
 
   // System Information Query Tools
@@ -482,19 +814,70 @@ class NinjaOneMCPServer {
         return this.api.getDevices(args.df, args.pageSize || 50, args.after);
       case 'get_device':
         return this.api.getDevice(args.id);
+      case 'get_device_dashboard_url':
+        return this.api.getDeviceDashboardUrl(args.id);
       case 'reboot_device':
         return this.api.rebootDevice(args.id, args.mode);
+      case 'set_device_maintenance':
+        return this.api.setDeviceMaintenance(args.id, args.mode);
       case 'get_organizations':
         return this.api.getOrganizations(args.pageSize, args.after);
+      case 'get_organization':
+        return this.api.getOrganization(args.id);
+      case 'get_organization_locations':
+        return this.api.getOrganizationLocations(args.id);
+      case 'get_organization_policies':
+        return this.api.getOrganizationPolicies(args.id);
+      case 'generate_organization_installer':
+        return this.api.generateOrganizationInstaller(args.installerType, args.locationId, args.organizationId);
       case 'get_alerts':
         return this.api.getAlerts(undefined, args.since);
+      case 'get_alert':
+        return this.api.getAlert(args.uid);
+      case 'reset_alert':
+        return this.api.resetAlert(args.uid);
+      case 'get_device_alerts':
+        return this.api.getDeviceAlerts(args.id, args.lang);
       case 'get_device_activities':
         return this.api.getDeviceActivities(args.id, args.pageSize);
       case 'search_devices_by_name':
         return this.searchDevicesByName(args.name, args.limit || 10);
       case 'find_windows11_devices':
         return this.findWindows11Devices(args.limit || 20);
-      
+
+      // Region utilities
+      case 'list_regions':
+        return this.api.listRegions();
+      case 'set_region':
+        if (args.baseUrl) this.api.setBaseUrl(args.baseUrl);
+        else if (args.region) this.api.setRegion(args.region);
+        else throw new McpError(ErrorCode.InvalidParams, 'Provide either region or baseUrl');
+        return { ok: true, baseUrl: (this as any).api['baseUrl'] };
+
+      // Device Control & Scripting
+      case 'run_device_script':
+        return this.api.runDeviceScript(args.id, args.scriptId, args.parameters, args.runAs);
+      case 'get_device_scripting_options':
+        return this.api.getDeviceScriptingOptions(args.id);
+      case 'control_windows_service':
+        return this.api.controlWindowsService(args.id, args.serviceId, args.action);
+      case 'configure_windows_service':
+        return this.api.configureWindowsService(args.id, args.serviceId, args.startupType);
+      case 'get_device_owner':
+        return this.api.getDeviceOwner(args.id);
+      case 'set_device_owner':
+        return this.api.setDeviceOwner(args.id, args.ownerUid);
+
+      // Device Patching
+      case 'scan_device_os_patches':
+        return this.api.scanDeviceOSPatches(args.id);
+      case 'apply_device_os_patches':
+        return this.api.applyDeviceOSPatches(args.id, args.patches);
+      case 'scan_device_software_patches':
+        return this.api.scanDeviceSoftwarePatches(args.id);
+      case 'apply_device_software_patches':
+        return this.api.applyDeviceSoftwarePatches(args.id, args.patches);
+
       // System Information Queries
       case 'query_antivirus_status':
         return this.api.queryAntivirusStatus(args.df, args.cursor, args.pageSize || 50);
@@ -548,11 +931,45 @@ class NinjaOneMCPServer {
         return this.api.queryScopedCustomFieldsDetailed(args.df, args.cursor, args.pageSize || 50);
       case 'query_policy_overrides':
         return this.api.queryPolicyOverrides(args.df, args.cursor, args.pageSize || 50);
-      
+
       // Backup
       case 'query_backup_usage':
         return this.api.queryBackupUsage(args.df, args.cursor, args.pageSize || 50);
-      
+
+      // Users & Roles
+      case 'get_end_users':
+        return this.api.getEndUsers();
+      case 'get_end_user':
+        return this.api.getEndUser(args.id);
+      case 'get_technicians':
+        return this.api.getTechnicians();
+      case 'get_technician':
+        return this.api.getTechnician(args.id);
+      case 'add_role_members':
+        return this.api.addRoleMembers(args.roleId, args.userIds);
+      case 'remove_role_members':
+        return this.api.removeRoleMembers(args.roleId, args.userIds);
+
+      // Contacts
+      case 'get_contacts':
+        return this.api.getContacts();
+      case 'get_contact':
+        return this.api.getContact(args.id);
+      case 'create_contact':
+        return this.api.createContact(args.organizationId, args.firstName, args.lastName, args.email, args.phone, args.jobTitle);
+      case 'update_contact':
+        return this.api.updateContact(args.id, args.firstName, args.lastName, args.email, args.phone, args.jobTitle);
+      case 'delete_contact':
+        return this.api.deleteContact(args.id);
+
+      // Device approvals and policy
+      case 'approve_devices':
+        return this.api.approveDevices(args.mode, args.deviceIds);
+      case 'get_device_policy_overrides':
+        return this.api.getDevicePolicyOverrides(args.id);
+      case 'get_policies':
+        return this.api.getPolicies(args.templateOnly);
+
       default:
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
     }

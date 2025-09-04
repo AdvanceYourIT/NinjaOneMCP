@@ -29,10 +29,15 @@ When running through Claude Desktop or other MCP clients:
    cp .env.example .env
    ```
 
-2. Edit `.env` with your credentials:
+2. Edit `.env` with your credentials and region:
    ```env
-   NINJA_ACCESS_TOKEN=your_actual_token_here
-   NINJA_BASE_URL=https://api.ninjarmm.com
+   NINJA_CLIENT_ID=your_client_id
+   NINJA_CLIENT_SECRET=your_client_secret
+   # Either set a base URL or a region key
+   NINJA_BASE_URL=https://app.ninjarmm.com
+   # NINJA_REGION=eu
+   # Optional: override auto-detect candidates (comma-separated)
+   # NINJA_BASE_URLS=https://app.ninjarmm.com,https://eu.ninjarmm.com
    MCP_MODE=stdio
    ```
 
@@ -57,8 +62,9 @@ When running through Claude Desktop or other MCP clients:
          "command": "node",
          "args": ["C:\\full\\path\\to\\NinjaOneMCP\\dist\\index.js"],
          "env": {
-           "NINJA_ACCESS_TOKEN": "your_actual_token_here",
-           "NINJA_BASE_URL": "https://api.ninjarmm.com",
+           "NINJA_CLIENT_ID": "<your_client_id>",
+           "NINJA_CLIENT_SECRET": "<your_client_secret>",
+           "NINJA_BASE_URL": "https://app.ninjarmm.com",
            "MCP_MODE": "stdio",
            "LOG_LEVEL": "info"
          }
@@ -85,8 +91,9 @@ When running through Claude Desktop or other MCP clients:
          "command": "node",
          "args": ["/path/to/NinjaOneMCP/dist/index.js"],
          "env": {
-           "NINJA_ACCESS_TOKEN": "your_actual_token_here",
-           "NINJA_BASE_URL": "https://api.ninjarmm.com",
+           "NINJA_CLIENT_ID": "<your_client_id>",
+           "NINJA_CLIENT_SECRET": "<your_client_secret>",
+           "NINJA_BASE_URL": "https://app.ninjarmm.com",
            "MCP_MODE": "stdio",
            "LOG_LEVEL": "info"
          }
@@ -97,22 +104,23 @@ When running through Claude Desktop or other MCP clients:
 
 ## Troubleshooting
 
-### "NINJA_ACCESS_TOKEN not found" Error
+### Missing credentials / cannot authenticate
 
-**Symptom:** Server fails with missing token error when used in Claude Desktop
+**Symptom:** Server fails with OAuth token error when used in Claude Desktop
 
 **Cause:** Environment variables not properly configured in MCP client config
 
 **Solution:** 
 - Ensure ALL required env vars are in the `env` section of your MCP config
+- Provide `NINJA_CLIENT_ID`, `NINJA_CLIENT_SECRET`, and either `NINJA_BASE_URL` or `NINJA_REGION`
 - Do NOT rely on the `.env` file for MCP client usage
-- Verify your token is correct and has proper permissions
+- Verify your client has proper scopes (monitoring, management, control)
 
 ### Server Works Locally but Not in Claude
 
 **Cause:** You're testing with `.env` locally but haven't added env vars to Claude config
 
-**Solution:** Copy all environment variables from your `.env` file to the `env` section in Claude's config
+**Solution:** Copy required environment variables from your `.env` file to the `env` section in Claude's config
 
 ### Common Mistakes to Avoid
 
@@ -139,7 +147,7 @@ npm test
 
 If you're still having issues:
 1. Check the logs (set `LOG_LEVEL=debug`)
-2. Verify your API token has proper permissions
+2. Verify your OAuth client has proper scopes
 3. Ensure network connectivity to NinjaONE API
 4. Open an issue with:
    - Your configuration (redact sensitive data)

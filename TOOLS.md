@@ -1,6 +1,6 @@
 # NinjaONE MCP Server - Tools Reference
 
-This document provides detailed information about all available tools in the NinjaONE MCP server.
+This document provides detailed information about the available tools in the NinjaONE MCP server.
 
 ## Core Tools Available
 
@@ -75,6 +75,177 @@ This document provides detailed information about all available tools in the Nin
   "df": "status = 'ONLINE'",
   "pageSize": 50
 }
+```
+
+## Additional Tools
+
+The server also exposes the following additional tools that cover device control, patch actions, organization details, alert details, users/roles, contacts, and approvals/policies.
+
+### Device Control & Scripting
+- `set_device_maintenance`: Set maintenance mode ON/OFF for a device
+- `get_device_dashboard_url`: Get device dashboard URL
+- `run_device_script`: Run a script on a device (optional parameters and runAs)
+- `get_device_scripting_options`: Get scripting options for a device
+- `control_windows_service`: Control a Windows service (START/STOP/RESTART)
+- `configure_windows_service`: Configure a Windows service startup type (e.g., AUTOMATIC/MANUAL/DISABLED)
+- `get_device_owner`: Get device owner
+- `set_device_owner`: Set device owner by UID
+
+### Device Patch Actions
+- `scan_device_os_patches`: Scan for OS patches on a device
+- `apply_device_os_patches`: Apply OS patches on a device
+- `scan_device_software_patches`: Scan for software patches on a device
+- `apply_device_software_patches`: Apply software patches on a device
+
+### Organization Details
+- `get_organization`: Get organization details by ID
+- `get_organization_locations`: Get locations for an organization
+- `get_organization_policies`: Get organization policies
+- `generate_organization_installer`: Generate installer for an organization/location
+
+### Alert Details
+- `get_alert`: Get a single alert by UID
+- `reset_alert`: Reset/acknowledge an alert by UID
+- `get_device_alerts`: Get alerts for a specific device
+
+### Users & Roles
+- `get_end_users`: List end users
+- `get_end_user`: Get an end user by ID
+- `get_technicians`: List technicians
+- `get_technician`: Get a technician by ID
+- `add_role_members`: Add users to a role
+- `remove_role_members`: Remove users from a role
+
+### Contacts
+- `get_contacts`: List contacts
+- `get_contact`: Get a contact by ID
+- `create_contact`: Create a contact
+- `update_contact`: Update a contact
+- `delete_contact`: Delete a contact
+
+### Device Approvals & Policies
+- `approve_devices`: Approve or deny multiple devices (by IDs)
+- `get_device_policy_overrides`: Get device policy overrides
+- `get_policies`: List policies (optionally templates only)
+
+### Region Utilities
+- `list_regions`: List supported regions and base URLs
+- `set_region`: Set region by key or by explicit base URL
+
+## Examples (JSON payloads)
+
+Below are minimal example payloads you can use when calling tools via an MCP client.
+
+### Device Control & Scripting
+- `set_device_maintenance`
+```json
+{ "id": 12345, "mode": "ON" }
+```
+
+- `run_device_script`
+```json
+{ "id": 12345, "scriptId": "abcd-1234", "parameters": { "key": "value" }, "runAs": "SYSTEM" }
+```
+
+- `control_windows_service`
+```json
+{ "id": 12345, "serviceId": "Spooler", "action": "RESTART" }
+```
+
+### Device Patch Actions
+- `apply_device_os_patches`
+```json
+{ "id": 12345, "patches": [ { "kb": "KB5030211" } ] }
+```
+
+### Organization Details
+- `generate_organization_installer`
+```json
+{ "installerType": "WINDOWS", "organizationId": 1, "locationId": 2 }
+```
+
+### Contacts
+- `create_contact`
+```json
+{ "organizationId": 1, "firstName": "Jane", "lastName": "Doe", "email": "jane.doe@example.com" }
+```
+
+### Users & Roles
+- `add_role_members`
+```json
+{ "roleId": 7, "userIds": [101, 102] }
+```
+
+### Alerts
+- `get_alert`
+```json
+{ "uid": "ALERT_UID_123" }
+```
+
+- `reset_alert`
+```json
+{ "uid": "ALERT_UID_123" }
+```
+
+- `get_device_alerts`
+```json
+{ "id": 12345, "lang": "en-US" }
+```
+
+### Device Owner
+- `get_device_owner`
+```json
+{ "id": 12345 }
+```
+
+- `set_device_owner`
+```json
+{ "id": 12345, "ownerUid": "user-uid-abc" }
+```
+
+### Device Dashboard URL
+- `get_device_dashboard_url`
+```json
+{ "id": 12345 }
+```
+
+### Policies
+- `get_policies`
+```json
+{ "templateOnly": true }
+```
+
+### Device Scripting Options
+- `get_device_scripting_options`
+```json
+{ "id": 12345 }
+```
+
+### Device Approvals
+- `approve_devices`
+```json
+{ "mode": "APPROVE", "deviceIds": [12345, 67890] }
+```
+
+### Windows Service Configuration
+- `configure_windows_service`
+```json
+{ "id": 12345, "serviceId": "Spooler", "startupType": "DISABLED" }
+```
+
+### Region Utilities
+- `list_regions`
+```json
+{}
+```
+
+- `set_region`
+```json
+{ "region": "eu" }
+```
+or
+```json
+{ "baseUrl": "https://eu.ninjarmm.com" }
 ```
 
 ### Organization Management Tools
@@ -175,10 +346,10 @@ The actual data varies by tool but typically includes:
 
 The server provides comprehensive error handling:
 
-- **Invalid Tool**: Returns MethodNotFound error
-- **API Errors**: Returns InternalError with details
-- **Authentication**: Returns error if NINJA_ACCESS_TOKEN is invalid
-- **Network Issues**: Returns connection error details
+- Invalid Tool: Returns MethodNotFound error
+- API Errors: Returns InternalError with details
+- Authentication: Returns an error if OAuth client credentials are missing or invalid (NINJA_CLIENT_ID / NINJA_CLIENT_SECRET)
+- Network Issues: Returns connection error details
 
 ## Rate Limiting
 

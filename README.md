@@ -37,20 +37,17 @@ Perfect for desktop MCP clients like Claude Desktop.
 RESTful API with JSON responses:
 - `/health` - Health check endpoint
 - `/info` - Server information
-- `/tools` - List available tools
-- `/tools/:toolName` - Execute specific tools
-- `/mcp` - Full JSON-RPC endpoint
+- `/tools` - List available tools (informational)
 
 #### Server-Sent Events (SSE)
 Real-time streaming for web applications:
 - `/events` - SSE connection endpoint
-- `/sse/command` - Command execution endpoint
 
 ## Quick Start
 
 ### Prerequisites
 - Node.js 18+ 
-- NinjaONE API access token
+- NinjaONE OAuth client credentials (client ID and secret)
 - PowerShell 7+ (for Windows development)
 
 ### Installation
@@ -59,20 +56,21 @@ Real-time streaming for web applications:
 # Clone and install dependencies
 cd C:\path\to\NinjaOneMCP
 npm install
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your NinjaONE credentials
 ```
 
 **⚠️ Important:** See [SETUP.md](SETUP.md) for detailed configuration instructions, especially for MCP client integration.
 
 ### Configuration
 
-Edit your `.env` file:
+Edit your `.env` file (local development only; MCP clients do not load .env):
 ```env
-NINJA_ACCESS_TOKEN=your_ninja_access_token_here
-NINJA_BASE_URL=https://api.ninjarmm.com
+NINJA_CLIENT_ID=your_client_id
+NINJA_CLIENT_SECRET=your_client_secret
+NINJA_BASE_URL=https://app.ninjarmm.com
+# Or set a region key instead of base URL:
+# NINJA_REGION=eu
+# Optional: override auto-detect candidates
+# NINJA_BASE_URLS=https://app.ninjarmm.com,https://eu.ninjarmm.com
 MCP_MODE=stdio
 HTTP_PORT=3000
 SSE_PORT=3001
@@ -144,20 +142,26 @@ await ninjaAPI.applyDeviceOSPatches(12345, patchArray);
 
 ## MCP Integration
 
-### Claude Desktop Configuration
+### Claude Desktop Configuration (Generic)
 
-**Important:** When using with Claude Desktop or other MCP clients, environment variables must be explicitly passed in the configuration. The `.env` file is NOT automatically loaded by MCP clients.
+Important: MCP clients do not load `.env`. Provide all required environment variables in the MCP client config.
 
-Add to your Claude Desktop config (`%APPDATA%\Claude\claude_desktop_config.json` on Windows):
+File location (Windows): `%APPDATA%\Claude\claude_desktop_config.json`
+
+Generic example (adjust your paths and env values):
 
 ```json
 {
   "mcpServers": {
     "ninjaone": {
       "command": "node",
-      "args": ["C:\\Path\\to\\NinjaOneMCP\\dist\\index.js"],
+      "args": [
+        "C:\\Path\\to\\NinjaOneMCP\\dist\\index.js"
+      ],
+      "cwd": "C:\\Path\\to\\NinjaOneMCP",
       "env": {
-        "NINJA_ACCESS_TOKEN": "your_actual_token_here",
+        "NINJA_CLIENT_ID": "<your_client_id>",
+        "NINJA_CLIENT_SECRET": "<your_client_secret>",
         "NINJA_BASE_URL": "https://api.ninjarmm.com",
         "MCP_MODE": "stdio",
         "LOG_LEVEL": "info"
@@ -167,7 +171,12 @@ Add to your Claude Desktop config (`%APPDATA%\Claude\claude_desktop_config.json`
 }
 ```
 
-**Note:** You MUST include all required environment variables in the `env` section. The server will not read the `.env` file when launched by an MCP client.
+Adjust these fields:
+- Path: Set `args[0]` to your actual `dist\index.js` path and `cwd` to the repo root path on your machine.
+- Region: Set `NINJA_BASE_URL` to your region, e.g. `https://eu.ninjarmm.com` for EU tenants.
+- Credentials: Provide your OAuth client credentials via `NINJA_CLIENT_ID` and `NINJA_CLIENT_SECRET`.
+
+Build first so `dist/index.js` exists: `npm install && npm run build`. Then restart Claude Desktop after editing the config.
 
 ### Available Tools
 
@@ -186,6 +195,20 @@ The server provides 29+ tools covering all major NinjaONE operations:
 **Custom Fields & Policy Query Tools**: `query_custom_fields`, `query_custom_fields_detailed`, `query_scoped_custom_fields`, `query_scoped_custom_fields_detailed`, `query_policy_overrides`
 
 **Backup Query Tools**: `query_backup_usage`
+
+## Region and Base URL
+
+The server can resolve the correct regional API endpoint in three ways:
+
+- Explicit base URL: set `NINJA_BASE_URL` (e.g., `https://eu.ninjarmm.com`). This takes precedence over all other options.
+- Region key: set `NINJA_REGION` to one of `us`, `us2`, `eu`, `ca`, `oc`. The server maps it to the proper base URL.
+- Auto-detect: if neither of the above is set, the server tries candidates in order until OAuth succeeds.
+  - Default candidates: `https://app.ninjarmm.com`, `https://us2.ninjarmm.com`, `https://eu.ninjarmm.com`, `https://ca.ninjarmm.com`, `https://oc.ninjarmm.com`
+  - Override list via `NINJA_BASE_URLS` (comma-separated) if needed.
+
+Runtime tools:
+- `list_regions` – returns supported regions and base URLs
+- `set_region` – set by `{ "region": "eu" }` or `{ "baseUrl": "https://eu.ninjarmm.com" }`
 
 ## API Reference
 
@@ -251,12 +274,12 @@ npm test
 ### Common Issues
 
 **Connection Errors**
-- Verify `NINJA_ACCESS_TOKEN` is correct
-- Check `NINJA_BASE_URL` points to your instance
+- Verify `NINJA_CLIENT_ID` and `NINJA_CLIENT_SECRET` are correct and have required scopes
+- Set `NINJA_BASE_URL` or `NINJA_REGION` appropriately (or rely on auto-detect)
 - Ensure network connectivity to NinjaONE API
 
 **Permission Errors**
-- Verify API token has required scopes
+- Verify your OAuth client has required scopes (monitoring, management, control)
 - Check organization/location access permissions
 
 **Transport Issues**

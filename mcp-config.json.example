@@ -11,8 +11,9 @@
       ],
       "cwd": "C:\\PATH\\TO\\NinjaOneMCP",
       "env": {
-        "NINJA_ACCESS_TOKEN": "YOUR_ACTUAL_TOKEN_HERE",
-        "NINJA_BASE_URL": "https://api.ninjarmm.com",
+        "NINJA_CLIENT_ID": "<your_client_id>",
+        "NINJA_CLIENT_SECRET": "<your_client_secret>",
+        "NINJA_BASE_URL": "https://eu.ninjarmm.com",
         "MCP_MODE": "stdio",
         "HTTP_PORT": "3000",
         "SSE_PORT": "3001",
