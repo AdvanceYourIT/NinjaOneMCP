@@ -1,14 +1,14 @@
 {
   "$schema": "https://registry.modelcontextprotocol.io/schema/mcp-server-v0.json",
   "name": "io.github.Lungshot/ninjaone",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "description": "MCP server for NinjaONE RMM with device management, monitoring, and automation",
   "displayName": "NinjaONE MCP Server",
   "author": "Lungshot",
   "homepage": "https://github.com/Lungshot/NinjaOneMCP",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Lungshot/NinjaOneMCP.git"
+    "url": "git://github.com/Lungshot/NinjaOneMCP.git"
   },
   "license": "MIT",
   "deployment": {
