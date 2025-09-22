@@ -43,7 +43,11 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Login to MCP Registry
-        run: mcp-publisher login github-oidc
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mcp-publisher login github-oidc
 
       - name: Publish to MCP Registry
-        run: mcp-publisher publish
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mcp-publisher publish
