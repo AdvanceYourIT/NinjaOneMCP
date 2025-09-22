@@ -38,9 +38,9 @@ jobs:
 
       - name: Install MCP Publisher
         run: |
-          curl -L https://github.com/modelcontextprotocol/publisher/releases/latest/download/mcp-publisher-linux-amd64 -o mcp-publisher
-          chmod +x mcp-publisher
-          sudo mv mcp-publisher /usr/local/bin/
+          # Install using the official installer script
+          curl -fsSL https://raw.githubusercontent.com/modelcontextprotocol/publisher/main/scripts/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Login to MCP Registry
         run: mcp-publisher login github-oidc
