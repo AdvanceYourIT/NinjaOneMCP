@@ -1,0 +1,57 @@
+{
+  "$schema": "https://registry.modelcontextprotocol.io/schema/mcp-server-v0.json",
+  "name": "ninjaone-mcp-server",
+  "namespace": "io.github.lungshot",
+  "version": "1.2.0",
+  "description": "Modern MCP server for NinjaONE RMM platform with comprehensive device management, monitoring, and automation capabilities",
+  "displayName": "NinjaONE MCP Server",
+  "author": "Lungshot",
+  "homepage": "https://github.com/Lungshot/NinjaOneMCP",
+  "repository": "https://github.com/Lungshot/NinjaOneMCP",
+  "license": "MIT",
+  "deployment": {
+    "type": "package",
+    "package": "npm:ninjaone-mcp-server"
+  },
+  "capabilities": [
+    "resource_subscriptions",
+    "resource_list_changed",
+    "roots_list_changed"
+  ],
+  "categories": [
+    "remote-monitoring",
+    "device-management",
+    "automation",
+    "infrastructure"
+  ],
+  "keywords": [
+    "ninjaone",
+    "rmm",
+    "remote-monitoring",
+    "device-management",
+    "msp",
+    "automation",
+    "infrastructure",
+    "monitoring"
+  ],
+  "config": {
+    "env": {
+      "NINJAONE_BASE_URL": {
+        "description": "NinjaONE API base URL (regional endpoint)",
+        "required": true
+      },
+      "NINJAONE_CLIENT_ID": {
+        "description": "NinjaONE OAuth2 Client ID",
+        "required": true
+      },
+      "NINJAONE_CLIENT_SECRET": {
+        "description": "NinjaONE OAuth2 Client Secret",
+        "required": true
+      },
+      "NINJAONE_REFRESH_TOKEN": {
+        "description": "NinjaONE OAuth2 Refresh Token",
+        "required": true
+      }
+    }
+  }
+}
