@@ -63,16 +63,19 @@ Download the latest `ninjaone-rmm.mcpb` bundle file from this repository. This i
 - Security-hardened implementation
 - Comprehensive error handling and logging
 
-**Installation:**
+**📖 For detailed step-by-step installation instructions with screenshots, see [README-MCPB.md](README-MCPB.md)**
+
+**Quick Installation:**
 1. Download `ninjaone-rmm.mcpb` from this repository
-2. Install through your MCP client (Claude Desktop supports drag-and-drop installation)
-3. Configure your NinjaONE credentials in the client settings
+2. Install through your MCP client (Claude Desktop supports MCPB installation)
+3. **Click "Configure" on the installed extension** to enter your NinjaONE credentials
 
 **Configuration required:**
 - **Base URL**: Your NinjaONE regional endpoint (e.g., `https://app.ninjarmm.com`)
 - **Client ID**: OAuth2 application client ID
 - **Client Secret**: OAuth2 application client secret
-- **Refresh Token**: OAuth2 refresh token for authentication
+
+**Note**: No refresh token required - uses OAuth2 client credentials flow for authentication.
 
 #### Option 2: From Source (Development)
 
