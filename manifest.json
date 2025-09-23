@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "ninjaone-rmm",
   "display_name": "NinjaONE RMM Server",
-  "version": "1.2.9",
+  "version": "1.2.10",
   "description": "Professional MCP server for NinjaONE RMM platform with comprehensive device management, monitoring, patch management, and automation capabilities",
   "author": {
     "name": "Lungshot",
@@ -24,10 +24,9 @@
         "${__dirname}/server/index.js"
       ],
       "env": {
-        "NINJAONE_BASE_URL": "${user_config.base_url}",
-        "NINJAONE_CLIENT_ID": "${user_config.client_id}",
-        "NINJAONE_CLIENT_SECRET": "${user_config.client_secret}",
-        "NINJAONE_REFRESH_TOKEN": "${user_config.refresh_token}",
+        "NINJA_BASE_URL": "${user_config.base_url}",
+        "NINJA_CLIENT_ID": "${user_config.client_id}",
+        "NINJA_CLIENT_SECRET": "${user_config.client_secret}",
         "LOG_LEVEL": "${user_config.log_level}",
         "NODE_ENV": "production"
       }
@@ -49,12 +48,6 @@
       "type": "string",
       "title": "OAuth Client Secret",
       "description": "Your NinjaONE OAuth2 application client secret",
-      "sensitive": true
-    },
-    "refresh_token": {
-      "type": "string",
-      "title": "OAuth Refresh Token",
-      "description": "Your NinjaONE OAuth2 refresh token for authentication",
       "sensitive": true
     },
     "log_level": {
