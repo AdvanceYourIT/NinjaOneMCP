@@ -251,7 +251,7 @@ class NinjaOneMCPServer {
    */
   async start() {
     try {
-      logger.info('Starting NinjaONE MCP Server v1.2.9');
+      logger.info('Starting NinjaONE MCP Server v1.2.10');
       logger.info('Environment:', {
         nodeVersion: process.version,
         platform: process.platform,
@@ -260,10 +260,9 @@ class NinjaOneMCPServer {
 
       // Validate required environment variables
       const requiredEnvVars = [
-        'NINJAONE_BASE_URL',
-        'NINJAONE_CLIENT_ID',
-        'NINJAONE_CLIENT_SECRET',
-        'NINJAONE_REFRESH_TOKEN'
+        'NINJA_BASE_URL',
+        'NINJA_CLIENT_ID',
+        'NINJA_CLIENT_SECRET'
       ];
 
       const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
