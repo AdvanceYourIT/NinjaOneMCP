@@ -46,11 +46,17 @@ Real-time streaming for web applications:
 ## Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 18+
 - NinjaONE OAuth client credentials (client ID and secret)
 - PowerShell 7+ (for Windows development)
 
-### Installation
+### Installation Options
+
+#### Option 1: Pre-built Package (Recommended)
+
+Download the latest `ninjaone-mcp-server.mcpb` package from the [releases](https://github.com/Lungshot/NinjaOneMCP/releases) or directly from this repository for easy distribution and installation.
+
+#### Option 2: From Source
 
 ```bash
 # Clone and install dependencies
@@ -293,6 +299,30 @@ Set `LOG_LEVEL=debug` in your `.env` file for detailed logging.
 ## License
 
 MIT License - see LICENSE file for details.
+
+## Distribution
+
+### Package Format
+
+This MCP server is distributed as a `.mcpb` (MCP Bundle) file containing:
+- Compiled JavaScript files (`dist/` folder)
+- Package configuration (`package.json`)
+- MCP server metadata (`server.json`)
+- Documentation (`README.md`, `LICENSE`)
+
+### Creating a New Package
+
+To rebuild the distribution package:
+
+```bash
+# Build the project
+npm run build
+
+# Create the .mcpb package
+tar -czf ninjaone-mcp-server.mcpb package.json server.json dist/ README.md LICENSE
+```
+
+The `.mcpb` file can be shared for easy installation and distribution without exposing source code or development dependencies.
 
 ## Support
 
