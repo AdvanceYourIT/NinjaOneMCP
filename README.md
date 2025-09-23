@@ -52,11 +52,29 @@ Real-time streaming for web applications:
 
 ### Installation Options
 
-#### Option 1: Pre-built Package (Recommended)
+#### Option 1: MCPB Bundle (Recommended)
 
-Download the latest `ninjaone-mcp-server.mcpb` package from the [releases](https://github.com/Lungshot/NinjaOneMCP/releases) or directly from this repository for easy distribution and installation.
+**For Claude Desktop and MCP-compatible clients:**
 
-#### Option 2: From Source
+Download the latest `ninjaone-rmm.mcpb` bundle file from this repository. This is a complete, production-ready MCP bundle that includes:
+
+- Compiled server code with all dependencies
+- Proper MCPB manifest for easy installation
+- Security-hardened implementation
+- Comprehensive error handling and logging
+
+**Installation:**
+1. Download `ninjaone-rmm.mcpb` from this repository
+2. Install through your MCP client (Claude Desktop supports drag-and-drop installation)
+3. Configure your NinjaONE credentials in the client settings
+
+**Configuration required:**
+- **Base URL**: Your NinjaONE regional endpoint (e.g., `https://app.ninjarmm.com`)
+- **Client ID**: OAuth2 application client ID
+- **Client Secret**: OAuth2 application client secret
+- **Refresh Token**: OAuth2 refresh token for authentication
+
+#### Option 2: From Source (Development)
 
 ```bash
 # Clone and install dependencies
@@ -302,27 +320,39 @@ MIT License - see LICENSE file for details.
 
 ## Distribution
 
-### Package Format
+### MCPB Bundle Format
 
-This MCP server is distributed as a `.mcpb` (MCP Bundle) file containing:
-- Compiled JavaScript files (`dist/` folder)
-- Package configuration (`package.json`)
-- MCP server metadata (`server.json`)
-- Documentation (`README.md`, `LICENSE`)
+This MCP server is distributed as a `.mcpb` (MCP Bundle) file following the official MCPB specification. The bundle contains:
 
-### Creating a New Package
+- **Production server code**: Compiled JavaScript with all dependencies included
+- **MCPB manifest**: Proper manifest.json for client compatibility
+- **Security features**: Input validation, error handling, and logging
+- **Documentation**: Complete setup and usage instructions
 
-To rebuild the distribution package:
+### Bundle Features
+
+- **Self-contained**: No external dependencies required
+- **Cross-platform**: Compatible with Windows, macOS, and Linux
+- **MCP-compliant**: Follows official MCP protocol specifications
+- **Security-hardened**: Comprehensive error handling and input validation
+- **Production-ready**: Includes logging, monitoring, and debugging capabilities
+
+### Creating a New Bundle
+
+To rebuild the distribution bundle:
 
 ```bash
-# Build the project
-npm run build
+# Install the MCPB CLI tool
+npm install -g @anthropic-ai/mcpb
 
-# Create the .mcpb package
-tar -czf ninjaone-mcp-server.mcpb package.json server.json dist/ README.md LICENSE
+# Validate the manifest
+mcpb validate manifest.json
+
+# Create the .mcpb bundle
+mcpb pack . ninjaone-rmm.mcpb
 ```
 
-The `.mcpb` file can be shared for easy installation and distribution without exposing source code or development dependencies.
+The resulting `.mcpb` file can be installed directly in Claude Desktop and other MCP-compatible clients through drag-and-drop or import functionality.
 
 ## Support
 

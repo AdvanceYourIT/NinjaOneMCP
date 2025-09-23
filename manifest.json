@@ -1,0 +1,83 @@
+{
+  "manifest_version": "0.2",
+  "name": "ninjaone-rmm",
+  "display_name": "NinjaONE RMM Server",
+  "version": "1.2.9",
+  "description": "Professional MCP server for NinjaONE RMM platform with comprehensive device management, monitoring, patch management, and automation capabilities",
+  "author": {
+    "name": "Lungshot",
+    "email": "support@ninjaone-mcp.dev",
+    "url": "https://github.com/Lungshot/NinjaOneMCP"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/Lungshot/NinjaOneMCP",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Lungshot/NinjaOneMCP.git"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
+      "env": {
+        "NINJAONE_BASE_URL": "${user_config.base_url}",
+        "NINJAONE_CLIENT_ID": "${user_config.client_id}",
+        "NINJAONE_CLIENT_SECRET": "${user_config.client_secret}",
+        "NINJAONE_REFRESH_TOKEN": "${user_config.refresh_token}",
+        "LOG_LEVEL": "${user_config.log_level}",
+        "NODE_ENV": "production"
+      }
+    }
+  },
+  "user_config": {
+    "base_url": {
+      "type": "string",
+      "title": "NinjaONE Base URL",
+      "description": "Your NinjaONE regional API endpoint (e.g., https://app.ninjarmm.com, https://eu.ninjarmm.com)",
+      "default": "https://app.ninjarmm.com"
+    },
+    "client_id": {
+      "type": "string",
+      "title": "OAuth Client ID",
+      "description": "Your NinjaONE OAuth2 application client ID"
+    },
+    "client_secret": {
+      "type": "string",
+      "title": "OAuth Client Secret",
+      "description": "Your NinjaONE OAuth2 application client secret",
+      "sensitive": true
+    },
+    "refresh_token": {
+      "type": "string",
+      "title": "OAuth Refresh Token",
+      "description": "Your NinjaONE OAuth2 refresh token for authentication",
+      "sensitive": true
+    },
+    "log_level": {
+      "type": "string",
+      "title": "Log Level",
+      "description": "Logging level for debugging and monitoring",
+      "default": "info"
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "node": ">=18.0.0 <21.0.0"
+  },
+  "keywords": [
+    "ninjaone",
+    "rmm",
+    "remote-monitoring",
+    "device-management",
+    "msp",
+    "automation",
+    "infrastructure",
+    "monitoring",
+    "patches",
+    "antivirus"
+  ]
+}
