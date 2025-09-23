@@ -3,40 +3,57 @@
  *
  * Handles authentication and API calls to NinjaONE RMM platform
  * with proper error handling, timeout management, and security measures.
+ * Uses OAuth2 client credentials flow.
  */
 
 import { logger } from "./logger.js";
 
 export class NinjaOneAPI {
   constructor() {
-    this.baseUrl = process.env.NINJAONE_BASE_URL?.replace(/\/$/, '');
-    this.clientId = process.env.NINJAONE_CLIENT_ID;
-    this.clientSecret = process.env.NINJAONE_CLIENT_SECRET;
-    this.refreshToken = process.env.NINJAONE_REFRESH_TOKEN;
+    const envBase = process.env.NINJA_BASE_URL;
+    const envRegion = (process.env.NINJA_REGION || '').toLowerCase();
 
-    this.accessToken = null;
-    this.tokenExpiry = null;
-
-    // Regional endpoints for auto-detection
-    this.candidateUrls = [
-      'https://app.ninjarmm.com',
-      'https://us2.ninjarmm.com',
-      'https://eu.ninjarmm.com',
-      'https://ca.ninjarmm.com',
-      'https://oc.ninjarmm.com'
-    ];
-
-    this.isConfigured = !!(this.clientId && this.clientSecret && this.refreshToken);
-
-    if (!this.isConfigured) {
-      throw new Error('Missing required environment variables: NINJAONE_CLIENT_ID, NINJAONE_CLIENT_SECRET, NINJAONE_REFRESH_TOKEN');
+    if (envBase) {
+      this.baseUrl = this.normalizeBaseUrl(envBase);
+      this.baseUrlExplicit = true;
+    } else if (envRegion && NinjaOneAPI.REGION_MAP[envRegion]) {
+      this.baseUrl = NinjaOneAPI.REGION_MAP[envRegion];
+      this.baseUrlExplicit = true;
+    } else {
+      // Will auto-detect on first token request
+      this.baseUrl = null;
     }
 
-    logger.debug('NinjaONE API client initialized', {
-      baseUrl: this.baseUrl,
-      clientId: this.clientId ? 'configured' : 'missing'
-    });
+    this.clientId = process.env.NINJA_CLIENT_ID || '';
+    this.clientSecret = process.env.NINJA_CLIENT_SECRET || '';
+    this.accessToken = null;
+    this.tokenExpiry = null;
+    this.baseUrlExplicit = false;
+
+    this.isConfigured = !!(this.clientId && this.clientSecret);
+
+    if (!this.isConfigured) {
+      logger.error('WARNING: NINJA_CLIENT_ID and NINJA_CLIENT_SECRET not set - API calls will fail until configured');
+    } else {
+      logger.info('NinjaONE API initialized successfully');
+    }
   }
+
+  static REGION_MAP = {
+    us: 'https://app.ninjarmm.com',
+    us2: 'https://us2.ninjarmm.com',
+    eu: 'https://eu.ninjarmm.com',
+    ca: 'https://ca.ninjarmm.com',
+    oc: 'https://oc.ninjarmm.com',
+  };
+
+  static DEFAULT_CANDIDATES = [
+    'https://app.ninjarmm.com',
+    'https://us2.ninjarmm.com',
+    'https://eu.ninjarmm.com',
+    'https://ca.ninjarmm.com',
+    'https://oc.ninjarmm.com',
+  ];
 
   /**
    * Test API connection by attempting to get organizations
@@ -53,202 +70,148 @@ export class NinjaOneAPI {
   }
 
   /**
-   * Get access token with automatic refresh
+   * Get access token using client credentials flow
    */
   async getAccessToken() {
-    // Check if current token is still valid (with 5 minute buffer)
+    if (!this.isConfigured) {
+      throw new Error('NinjaONE API not configured - NINJA_CLIENT_ID and NINJA_CLIENT_SECRET required');
+    }
+
+    // Check if token is still valid (with 5 minute buffer)
     if (this.accessToken && this.tokenExpiry && Date.now() < (this.tokenExpiry - 300000)) {
       return this.accessToken;
     }
 
-    // If no base URL is set, try auto-detection
-    if (!this.baseUrl) {
-      logger.info('No base URL configured, attempting auto-detection...');
-      return await this.detectAndAuthenticate();
-    }
-
-    // Use configured base URL
-    return await this.refreshAccessToken(this.baseUrl);
-  }
-
-  /**
-   * Auto-detect the correct regional endpoint
-   */
-  async detectAndAuthenticate() {
-    const tried = [];
-
-    for (const candidateUrl of this.candidateUrls) {
-      try {
-        logger.debug(`Trying regional endpoint: ${candidateUrl}`);
-        tried.push(candidateUrl);
-
-        const token = await this.refreshAccessToken(candidateUrl);
-
-        // Success! Set this as our base URL
-        this.baseUrl = candidateUrl;
-        logger.info(`Auto-detected NinjaONE region: ${candidateUrl}`);
-
-        return token;
-
-      } catch (error) {
-        logger.debug(`Failed to authenticate with ${candidateUrl}: ${error.message}`);
-        continue;
+    // Ensure baseUrl is resolved (auto-detect if needed)
+    if (!this.baseUrl || !this.baseUrlExplicit) {
+      const tried = [];
+      const candidates = this.getCandidateBaseUrls();
+      for (const candidate of candidates) {
+        tried.push(candidate);
+        try {
+          const token = await this.requestToken(candidate);
+          this.baseUrl = candidate;
+          this.baseUrlExplicit = true; // lock after success
+          this.accessToken = token.access_token;
+          this.tokenExpiry = Date.now() + (token.expires_in * 1000);
+          logger.info(`OAuth token acquired successfully (region: ${candidate})`);
+          return this.accessToken;
+        } catch (e) {
+          // try next
+        }
       }
+      throw new Error(`Failed to acquire OAuth token: no candidate base URL succeeded. Tried: ${tried.join(', ')}`);
     }
 
-    throw new Error(`Failed to auto-detect NinjaONE region. Tried: ${tried.join(', ')}. Please set NINJAONE_BASE_URL manually.`);
+    // Get new token using resolved baseUrl
+    const token = await this.requestToken(this.baseUrl);
+    this.accessToken = token.access_token;
+    this.tokenExpiry = Date.now() + (token.expires_in * 1000);
+    logger.info('OAuth token acquired successfully');
+    return this.accessToken;
   }
 
   /**
-   * Refresh access token using refresh token
+   * Request token using client credentials flow
    */
-  async refreshAccessToken(baseUrl) {
+  async requestToken(baseUrl) {
     const tokenUrl = `${baseUrl}/ws/oauth/token`;
-
     const body = new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: this.refreshToken,
+      grant_type: 'client_credentials',
       client_id: this.clientId,
-      client_secret: this.clientSecret
+      client_secret: this.clientSecret,
+      scope: 'monitoring management control'
     });
 
-    try {
-      const response = await fetch(tokenUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'NinjaONE-MCP-Server/1.2.9'
-        },
-        body: body.toString(),
-        timeout: 10000 // 10 second timeout
-      });
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+    });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`OAuth token refresh failed: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      const tokenData = await response.json();
-
-      this.accessToken = tokenData.access_token;
-      this.tokenExpiry = Date.now() + (tokenData.expires_in * 1000);
-
-      logger.debug('Access token refreshed successfully');
-
-      return this.accessToken;
-
-    } catch (error) {
-      logger.error('Token refresh failed:', error.message);
-      throw new Error(`Failed to refresh access token: ${error.message}`);
+    if (!response.ok) {
+      throw new Error(`OAuth token request failed: ${response.status} ${response.statusText}`);
     }
+
+    return await response.json();
   }
 
-  /**
-   * Make authenticated API call with retry logic and proper error handling
-   */
+  normalizeBaseUrl(url) {
+    if (!/^https?:\/\//i.test(url)) {
+      return `https://${url}`;
+    }
+    return url;
+  }
+
+  getCandidateBaseUrls() {
+    const fromEnv = (process.env.NINJA_BASE_URLS || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(u => this.normalizeBaseUrl(u));
+    return (fromEnv.length > 0 ? fromEnv : NinjaOneAPI.DEFAULT_CANDIDATES);
+  }
+
+  // Region utilities
+  listRegions() {
+    return Object.entries(NinjaOneAPI.REGION_MAP).map(([region, baseUrl]) => ({ region, baseUrl }));
+  }
+
+  setRegion(region) {
+    const key = (region || '').toLowerCase();
+    const mapped = NinjaOneAPI.REGION_MAP[key];
+    if (!mapped) throw new Error(`Unknown region: ${region}`);
+    this.setBaseUrl(mapped);
+  }
+
+  setBaseUrl(url) {
+    this.baseUrl = this.normalizeBaseUrl(url);
+    this.baseUrlExplicit = true;
+    // reset token cache so it refreshes against new base
+    this.accessToken = null;
+    this.tokenExpiry = null;
+  }
+
+  async makeRequest(endpoint, options = {}) {
+    const token = await this.getAccessToken();
+    const base = this.baseUrl || NinjaOneAPI.DEFAULT_CANDIDATES[0];
+    const response = await fetch(`${base}${endpoint}`, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  buildQuery(params) {
+    if (!params) return '';
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value != null) {
+        query.append(key, value.toString());
+      }
+    });
+    const queryString = query.toString();
+    return queryString ? `?${queryString}` : '';
+  }
+
+  // Legacy compatibility method
   async apiCall(endpoint, options = {}, params = {}) {
-    const maxRetries = 2;
-    let lastError;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const token = await this.getAccessToken();
-        const url = new URL(endpoint, this.baseUrl);
-
-        // Add query parameters
-        Object.entries(params).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            url.searchParams.append(key, value.toString());
-          }
-        });
-
-        const requestOptions = {
-          method: options.method || 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'User-Agent': 'NinjaONE-MCP-Server/1.2.9',
-            ...options.headers
-          },
-          timeout: options.timeout || 30000 // 30 second timeout
-        };
-
-        if (options.body) {
-          requestOptions.body = JSON.stringify(options.body);
-        }
-
-        logger.debug(`API call: ${requestOptions.method} ${url.pathname}`, {
-          params: this.sanitizeLogData(params)
-        });
-
-        const response = await fetch(url.toString(), requestOptions);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          const error = new Error(`API call failed: ${response.status} ${response.statusText} - ${errorText}`);
-          error.status = response.status;
-          error.statusText = response.statusText;
-
-          // Check if it's an auth error that requires token refresh
-          if (response.status === 401) {
-            this.accessToken = null;
-            this.tokenExpiry = null;
-
-            if (attempt < maxRetries) {
-              logger.debug(`Authentication failed, retrying (attempt ${attempt}/${maxRetries})`);
-              continue;
-            }
-          }
-
-          throw error;
-        }
-
-        const data = await response.json();
-
-        logger.debug(`API call successful: ${requestOptions.method} ${url.pathname}`, {
-          responseSize: JSON.stringify(data).length
-        });
-
-        return data;
-
-      } catch (error) {
-        lastError = error;
-
-        if (attempt < maxRetries && (error.message?.includes('timeout') || error.message?.includes('network'))) {
-          logger.debug(`Network error, retrying (attempt ${attempt}/${maxRetries}): ${error.message}`);
-          await this.delay(1000 * attempt); // Progressive delay
-          continue;
-        }
-
-        break;
-      }
+    try {
+      const queryString = this.buildQuery(params);
+      return await this.makeRequest(`${endpoint}${queryString}`, options);
+    } catch (error) {
+      logger.error('API call failed:', error.message);
+      throw error;
     }
-
-    logger.error(`API call failed after ${maxRetries} attempts:`, lastError.message);
-    throw lastError;
-  }
-
-  /**
-   * Sanitize data for logging (remove sensitive information)
-   */
-  sanitizeLogData(data) {
-    const sanitized = { ...data };
-    const sensitiveKeys = ['password', 'secret', 'token', 'key', 'credential'];
-
-    for (const key of Object.keys(sanitized)) {
-      if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))) {
-        sanitized[key] = '[REDACTED]';
-      }
-    }
-
-    return sanitized;
-  }
-
-  /**
-   * Utility delay function
-   */
-  delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   // Device Management Methods
