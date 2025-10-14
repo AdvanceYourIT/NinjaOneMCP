@@ -1,3 +1,14 @@
+const shouldSerializeBody = (body: BodyInit | null | undefined): boolean => {
+  if (body == null) return false;
+  if (typeof body === 'string') return false;
+  if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) return false;
+  if (typeof Blob !== 'undefined' && body instanceof Blob) return false;
+  if (typeof FormData !== 'undefined' && body instanceof FormData) return false;
+  if (typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) return false;
+  if (typeof ReadableStream !== 'undefined' && body instanceof ReadableStream) return false;
+  return typeof body === 'object';
+};
+
 export class NinjaOneAPI {
   private baseUrl: string | null = null;
   private clientId: string;
@@ -127,20 +138,48 @@ export class NinjaOneAPI {
   private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
     const token = await this.getAccessToken();
     const base = this.baseUrl || NinjaOneAPI.DEFAULT_CANDIDATES[0];
-    const response = await fetch(`${base}${endpoint}`, {
-      ...options,
-      headers: { 
-        'Authorization': `Bearer ${token}`, 
-        'Content-Type': 'application/json', 
-        ...options.headers 
-      }
+
+    const requestOptions: RequestInit = { ...options };
+
+    if (shouldSerializeBody(requestOptions.body)) {
+      requestOptions.body = JSON.stringify(requestOptions.body);
+    }
+
+    const headers = new Headers({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     });
-    
+
+    if (options.headers) {
+      const extra = new Headers(options.headers);
+      extra.forEach((value, key) => headers.set(key, value));
+    }
+
+    requestOptions.headers = headers;
+
+requestOptions.headers = headers;
+
+    const response = await fetch(`${base}${endpoint}`, requestOptions);
+
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
-    
-    return await response.json();
+
+    // Try to get response text first
+    const text = await response.text();
+
+    // If empty response, return success
+    if (!text || text.trim().length === 0) {
+      return { success: true };
+    }
+
+    // Try to parse JSON
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      // If JSON parse fails but response was successful, return success
+      return { success: true };
+    }
   }
 
   // Region utilities
@@ -185,12 +224,16 @@ export class NinjaOneAPI {
   async setDeviceMaintenance(id: number, mode: string): Promise<any> {
     return this.makeRequest(`/v2/device/${id}/maintenance`, { 
       method: 'PUT', 
-      body: JSON.stringify({ mode }) 
+      body: { mode } as any
     });
   }
 
-  async rebootDevice(id: number, mode: string): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/reboot/${mode}`, { method: 'POST' }); 
+  async rebootDevice(id: number, mode: string = 'NORMAL', reason?: string): Promise<any> {
+    const options: RequestInit = { method: 'POST' };
+    if (reason) {
+      options.body = JSON.stringify({ reason });
+    }
+    return this.makeRequest(`/v2/device/${id}/reboot/${mode}`, options);
   }
 
   async runDeviceScript(id: number, scriptId: string, parameters?: any, runAs?: string): Promise<any> {
