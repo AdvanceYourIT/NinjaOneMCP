@@ -140,7 +140,21 @@ export class NinjaOneAPI {
       throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
     
-    return await response.json();
+    // Try to get response text first
+    const text = await response.text();
+    
+    // If empty response, return success
+    if (!text || text.trim().length === 0) {
+      return { success: true };
+    }
+    
+    // Try to parse JSON
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      // If JSON parse fails but response was successful, return success
+      return { success: true };
+    }
   }
 
   // Region utilities
