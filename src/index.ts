@@ -147,32 +147,7 @@ const TOOLS = [
     }
   },
 
-  // Device Control & Scripting
-  {
-    name: 'run_device_script',
-    description: 'Run a script on a device',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'Device ID' },
-        scriptId: { type: 'string', description: 'Script ID' },
-        parameters: { type: 'object', description: 'Optional script parameters' },
-        runAs: { type: 'string', description: 'Optional run-as user context' }
-      },
-      required: ['id', 'scriptId']
-    }
-  },
-  {
-    name: 'get_device_scripting_options',
-    description: 'Get scripting options for a device',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'Device ID' }
-      },
-      required: ['id']
-    }
-  },
+  // Device Control
   {
     name: 'control_windows_service',
     description: 'Control a Windows service on a device',
@@ -854,11 +829,7 @@ class NinjaOneMCPServer {
         else throw new McpError(ErrorCode.InvalidParams, 'Provide either region or baseUrl');
         return { ok: true, baseUrl: (this as any).api['baseUrl'] };
 
-      // Device Control & Scripting
-      case 'run_device_script':
-        return this.api.runDeviceScript(args.id, args.scriptId, args.parameters, args.runAs);
-      case 'get_device_scripting_options':
-        return this.api.getDeviceScriptingOptions(args.id);
+      // Device Control
       case 'control_windows_service':
         return this.api.controlWindowsService(args.id, args.serviceId, args.action);
       case 'configure_windows_service':

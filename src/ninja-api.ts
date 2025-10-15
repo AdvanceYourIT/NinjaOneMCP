@@ -230,69 +230,6 @@ export class NinjaOneAPI {
     return this.makeRequest(`/v2/device/${id}/reboot/${mode}`, 'POST', body);
   }
 
-  async runDeviceScript(id: number, scriptId: string, parameters?: any, runAs?: string): Promise<any> {
-    const isUuid = scriptId.includes('-');
-
-    let body: any;
-
-    if (isUuid) {
-      body = {
-        type: 'ACTION',
-        id: 0,
-        uid: scriptId
-      };
-    } else {
-      const scriptOptions = await this.getDeviceScriptingOptions(id);
-      const scriptIdNum = parseInt(scriptId);
-
-      const script = scriptOptions.scripts.find((s: any) => s.id === scriptIdNum && s.type === 'SCRIPT');
-
-      if (!script) {
-        throw new Error(`Script with ID ${scriptId} not found`);
-      }
-
-      const scriptName = script.name;
-      const action = scriptOptions.scripts.find((s: any) =>
-        s.type === 'ACTION' &&
-        (s.name.toLowerCase().includes(scriptName.replace('script.', '').replace(/_/g, ' ')) ||
-         scriptName.toLowerCase().includes(s.name.toLowerCase().replace(/ /g, '_')))
-      );
-
-      if (action && action.uid) {
-        body = {
-          type: 'ACTION',
-          id: 0,
-          uid: action.uid
-        };
-      } else if (script.uid) {
-        body = {
-          type: 'ACTION',
-          id: 0,
-          uid: script.uid
-        };
-      } else {
-        body = {
-          type: 'SCRIPT',
-          id: scriptIdNum
-        };
-      }
-    }
-
-    body.runAs = runAs || 'system';
-
-    if (parameters !== undefined && parameters !== null) {
-      body.parameters = typeof parameters === 'string' ? parameters : JSON.stringify(parameters);
-    }
-
-    console.error('Script run body:', JSON.stringify(body, null, 2));
-
-    return this.makeRequest(`/v2/device/${id}/script/run`, 'POST', body);
-  }
-
-  async getDeviceScriptingOptions(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/scripting/options`); 
-  }
-
   async approveDevices(mode: string, deviceIds: number[]): Promise<any> {
     const body = { devices: deviceIds };
     return this.makeRequest(`/v2/devices/approval/${mode}`, 'POST', body);

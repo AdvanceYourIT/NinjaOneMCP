@@ -158,7 +158,6 @@ If you encounter issues:
 Once installed and working, explore the full range of NinjaONE RMM capabilities:
 - Device management and monitoring
 - Patch management
-- Remote script execution
 - Security monitoring
 - Automated maintenance tasks
 
