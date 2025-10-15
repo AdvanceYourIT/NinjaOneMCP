@@ -231,32 +231,40 @@ export class NinjaOneAPI {
   }
 
   async runDeviceScript(id: number, scriptId: string, parameters?: any, runAs?: string): Promise<any> {
-    // Check if scriptId is a UUID (contains dashes)
     const isUuid = scriptId.includes('-');
-  
+
     let body: any;
-  
+
     if (isUuid) {
-      // Direct UUID provided
       body = {
         type: 'ACTION',
         id: 0,
         uid: scriptId
       };
     } else {
-      // Script ID provided - need to look up the UID
       const scriptOptions = await this.getDeviceScriptingOptions(id);
       const scriptIdNum = parseInt(scriptId);
-    
-      // Find the script by ID
-      const script = scriptOptions.scripts.find((s: any) => s.id === scriptIdNum);
-    
+
+      const script = scriptOptions.scripts.find((s: any) => s.id === scriptIdNum && s.type === 'SCRIPT');
+
       if (!script) {
         throw new Error(`Script with ID ${scriptId} not found`);
       }
-    
-      // Check if it has a UID (ACTION type) or use ID (SCRIPT type)
-      if (script.uid) {
+
+      const scriptName = script.name;
+      const action = scriptOptions.scripts.find((s: any) =>
+        s.type === 'ACTION' &&
+        (s.name.toLowerCase().includes(scriptName.replace('script.', '').replace(/_/g, ' ')) ||
+         scriptName.toLowerCase().includes(s.name.toLowerCase().replace(/ /g, '_')))
+      );
+
+      if (action && action.uid) {
+        body = {
+          type: 'ACTION',
+          id: 0,
+          uid: action.uid
+        };
+      } else if (script.uid) {
         body = {
           type: 'ACTION',
           id: 0,
@@ -269,15 +277,13 @@ export class NinjaOneAPI {
         };
       }
     }
-  
-    // Add runAs - default to 'system' if not provided
+
     body.runAs = runAs || 'system';
-  
-    // Only add parameters if provided
+
     if (parameters !== undefined && parameters !== null) {
       body.parameters = typeof parameters === 'string' ? parameters : JSON.stringify(parameters);
     }
-    
+
     console.error('Script run body:', JSON.stringify(body, null, 2));
 
     return this.makeRequest(`/v2/device/${id}/script/run`, 'POST', body);
