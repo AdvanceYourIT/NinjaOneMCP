@@ -322,11 +322,11 @@ export class NinjaOneAPI {
 
   // Patch Management Methods
   async scanDeviceOSPatches(id) {
-    return await this.apiCall(`/v2/device/${id}/os-patches/scan`, { method: 'POST' });
+    return await this.apiCall(`/v2/device/${id}/patch/os/scan`, { method: 'POST' });
   }
 
   async applyDeviceOSPatches(id, patches) {
-    return await this.apiCall(`/v2/device/${id}/os-patches`, {
+    return await this.apiCall(`/v2/device/${id}/patch/os/apply`, {
       method: 'POST',
       body: { patches }
     });
