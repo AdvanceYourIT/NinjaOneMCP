@@ -86,8 +86,9 @@ The server also exposes the following additional tools that cover device control
 - `get_device_dashboard_url`: Get device dashboard URL
 - `control_windows_service`: Control a Windows service (START/STOP/RESTART)
 - `configure_windows_service`: Configure a Windows service startup type (e.g., AUTOMATIC/MANUAL/DISABLED)
-- `get_device_owner`: Get device owner
-- `set_device_owner`: Set device owner by UID
+
+> ℹ️ **Owner details:** The NinjaONE API currently exposes device owner information only via the `assignedOwnerUid` field
+> returned from `get_device`. Dedicated owner management endpoints are not available.
 
 ### Device Patch Actions
 - `scan_device_os_patches`: Scan for OS patches on a device

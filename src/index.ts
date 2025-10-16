@@ -174,30 +174,6 @@ const TOOLS = [
       required: ['id', 'serviceId', 'startupType']
     }
   },
-  {
-    name: 'get_device_owner',
-    description: 'Get the owner of a device',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'Device ID' }
-      },
-      required: ['id']
-    }
-  },
-  {
-    name: 'set_device_owner',
-    description: 'Set the owner of a device',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'Device ID' },
-        ownerUid: { type: 'string', description: 'Owner UID' }
-      },
-      required: ['id', 'ownerUid']
-    }
-  },
-
   // Device Patching
   {
     name: 'scan_device_os_patches',
@@ -834,10 +810,6 @@ class NinjaOneMCPServer {
         return this.api.controlWindowsService(args.id, args.serviceId, args.action);
       case 'configure_windows_service':
         return this.api.configureWindowsService(args.id, args.serviceId, args.startupType);
-      case 'get_device_owner':
-        return this.api.getDeviceOwner(args.id);
-      case 'set_device_owner':
-        return this.api.setDeviceOwner(args.id, args.ownerUid);
 
       // Device Patching
       case 'scan_device_os_patches':
