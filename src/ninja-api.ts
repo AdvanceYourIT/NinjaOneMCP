@@ -198,8 +198,9 @@ export class NinjaOneAPI {
     return this.makeRequest(`/v2/devices${this.buildQuery({ df, pageSize, after })}`);
   }
 
-  async getDevice(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}`); 
+  async getDevice(id: number): Promise<any> {
+    // Owner information is available via the assignedOwnerUid field in this response.
+    return this.makeRequest(`/v2/device/${id}`);
   }
 
   async getDeviceDashboardUrl(id: number): Promise<any> { 
@@ -261,16 +262,6 @@ export class NinjaOneAPI {
 
   async configureWindowsService(id: number, serviceId: string, startupType: string): Promise<any> {
     return this.makeRequest(`/v2/device/${id}/windows-service/${serviceId}/configure`, 'POST', { startupType });
-  }
-
-  // Device Ownership
-  
-  async getDeviceOwner(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/owner`); 
-  }
-
-  async setDeviceOwner(id: number, ownerUid: string): Promise<any> {
-    return this.makeRequest(`/v2/device/${id}/owner/${ownerUid}`, 'POST');
   }
 
   // Policy Management
