@@ -147,32 +147,7 @@ const TOOLS = [
     }
   },
 
-  // Device Control & Scripting
-  {
-    name: 'run_device_script',
-    description: 'Run a script on a device',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'Device ID' },
-        scriptId: { type: 'string', description: 'Script ID' },
-        parameters: { type: 'object', description: 'Optional script parameters' },
-        runAs: { type: 'string', description: 'Optional run-as user context' }
-      },
-      required: ['id', 'scriptId']
-    }
-  },
-  {
-    name: 'get_device_scripting_options',
-    description: 'Get scripting options for a device',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'Device ID' }
-      },
-      required: ['id']
-    }
-  },
+  // Device Control
   {
     name: 'control_windows_service',
     description: 'Control a Windows service on a device',
@@ -199,30 +174,6 @@ const TOOLS = [
       required: ['id', 'serviceId', 'startupType']
     }
   },
-  {
-    name: 'get_device_owner',
-    description: 'Get the owner of a device',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'Device ID' }
-      },
-      required: ['id']
-    }
-  },
-  {
-    name: 'set_device_owner',
-    description: 'Set the owner of a device',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'Device ID' },
-        ownerUid: { type: 'string', description: 'Owner UID' }
-      },
-      required: ['id', 'ownerUid']
-    }
-  },
-
   // Device Patching
   {
     name: 'scan_device_os_patches',
@@ -854,19 +805,11 @@ class NinjaOneMCPServer {
         else throw new McpError(ErrorCode.InvalidParams, 'Provide either region or baseUrl');
         return { ok: true, baseUrl: (this as any).api['baseUrl'] };
 
-      // Device Control & Scripting
-      case 'run_device_script':
-        return this.api.runDeviceScript(args.id, args.scriptId, args.parameters, args.runAs);
-      case 'get_device_scripting_options':
-        return this.api.getDeviceScriptingOptions(args.id);
+      // Device Control
       case 'control_windows_service':
         return this.api.controlWindowsService(args.id, args.serviceId, args.action);
       case 'configure_windows_service':
         return this.api.configureWindowsService(args.id, args.serviceId, args.startupType);
-      case 'get_device_owner':
-        return this.api.getDeviceOwner(args.id);
-      case 'set_device_owner':
-        return this.api.setDeviceOwner(args.id, args.ownerUid);
 
       // Device Patching
       case 'scan_device_os_patches':

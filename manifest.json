@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "ninjaone-rmm",
   "display_name": "NinjaONE RMM Server",
-  "version": "1.2.10",
+  "version": "1.2.11",
   "description": "Professional MCP server for NinjaONE RMM platform with comprehensive device management, monitoring, patch management, and automation capabilities",
   "author": {
     "name": "Lungshot",

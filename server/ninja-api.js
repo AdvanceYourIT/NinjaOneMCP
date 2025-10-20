@@ -175,20 +175,40 @@ export class NinjaOneAPI {
   async makeRequest(endpoint, options = {}) {
     const token = await this.getAccessToken();
     const base = this.baseUrl || NinjaOneAPI.DEFAULT_CANDIDATES[0];
-    const response = await fetch(`${base}${endpoint}`, {
+    const method = (options.method || 'GET').toUpperCase();
+
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      ...options.headers,
+    };
+
+    const requestOptions = {
       ...options,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        ...options.headers
+      method,
+      headers,
+    };
+
+    if (['POST', 'PUT', 'PATCH'].includes(method) && this.isPlainObject(options.body)) {
+      requestOptions.body = JSON.stringify(options.body);
+      const hasContentType = Object.keys(headers).some(key => key.toLowerCase() === 'content-type');
+      if (!hasContentType) {
+        requestOptions.headers = { ...headers, 'Content-Type': 'application/json' };
       }
-    });
+    }
+
+    const response = await fetch(`${base}${endpoint}`, requestOptions);
 
     if (!response.ok) {
       throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
 
     return await response.json();
+  }
+
+  isPlainObject(value) {
+    if (value === null || typeof value !== 'object') return false;
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
   }
 
   buildQuery(params) {
@@ -302,11 +322,11 @@ export class NinjaOneAPI {
 
   // Patch Management Methods
   async scanDeviceOSPatches(id) {
-    return await this.apiCall(`/v2/device/${id}/os-patches/scan`, { method: 'POST' });
+    return await this.apiCall(`/v2/device/${id}/patch/os/scan`, { method: 'POST' });
   }
 
   async applyDeviceOSPatches(id, patches) {
-    return await this.apiCall(`/v2/device/${id}/os-patches`, {
+    return await this.apiCall(`/v2/device/${id}/patch/os/apply`, {
       method: 'POST',
       body: { patches }
     });

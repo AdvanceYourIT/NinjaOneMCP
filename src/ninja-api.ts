@@ -34,7 +34,6 @@ export class NinjaOneAPI {
       this.baseUrl = NinjaOneAPI.REGION_MAP[envRegion];
       this.baseUrlExplicit = true;
     } else {
-      // Will auto-detect on first token request
       this.baseUrl = null;
     }
     this.clientId = process.env.NINJA_CLIENT_ID || '';
@@ -53,12 +52,10 @@ export class NinjaOneAPI {
       throw new Error('NinjaONE API not configured - NINJA_CLIENT_ID and NINJA_CLIENT_SECRET required');
     }
 
-    // Check if token is still valid (with 5 minute buffer)
     if (this.accessToken && this.tokenExpiry && Date.now() < (this.tokenExpiry - 300000)) {
       return this.accessToken;
     }
 
-    // Ensure baseUrl is resolved (auto-detect if needed)
     if (!this.baseUrl || !this.baseUrlExplicit) {
       const tried: string[] = [];
       const candidates = this.getCandidateBaseUrls();
@@ -67,7 +64,7 @@ export class NinjaOneAPI {
         try {
           const token = await this.requestToken(candidate);
           this.baseUrl = candidate;
-          this.baseUrlExplicit = true; // lock after success
+          this.baseUrlExplicit = true;
           this.accessToken = token.access_token;
           this.tokenExpiry = Date.now() + (token.expires_in * 1000);
           console.error(`OAuth token acquired successfully (region: ${candidate})`);
@@ -79,7 +76,6 @@ export class NinjaOneAPI {
       throw new Error(`Failed to acquire OAuth token: no candidate base URL succeeded. Tried: ${tried.join(', ')}`);
     }
 
-    // Get new token using resolved baseUrl
     const token = await this.requestToken(this.baseUrl);
     this.accessToken = token.access_token;
     this.tokenExpiry = Date.now() + (token.expires_in * 1000);
@@ -124,23 +120,51 @@ export class NinjaOneAPI {
     return (fromEnv.length > 0 ? fromEnv : NinjaOneAPI.DEFAULT_CANDIDATES);
   }
 
-  private async makeRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
+  private async makeRequest(
+    endpoint: string, 
+    method: string = 'GET',
+    body?: any
+  ): Promise<any> {
     const token = await this.getAccessToken();
     const base = this.baseUrl || NinjaOneAPI.DEFAULT_CANDIDATES[0];
-    const response = await fetch(`${base}${endpoint}`, {
-      ...options,
-      headers: { 
-        'Authorization': `Bearer ${token}`, 
-        'Content-Type': 'application/json', 
-        ...options.headers 
+    
+    const options: RequestInit = {
+      method,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': '*/*'
       }
-    });
+    };
+
+    if (body && ['POST', 'PUT', 'PATCH'].includes(method)) {
+      options.headers = {
+        ...options.headers,
+        'Content-Type': 'application/json'
+      };
+      options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(`${base}${endpoint}`, options);
     
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
     
-    return await response.json();
+    if (method === 'DELETE' && response.status === 204) {
+      return { success: true };
+    }
+
+    const text = await response.text();
+    if (!text || text.trim().length === 0) {
+      return { success: true };
+    }
+    
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      return { success: true };
+    }
   }
 
   // Region utilities
@@ -158,7 +182,6 @@ export class NinjaOneAPI {
   public setBaseUrl(url: string): void {
     this.baseUrl = this.normalizeBaseUrl(url);
     this.baseUrlExplicit = true;
-    // reset token cache so it refreshes against new base
     this.accessToken = null;
     this.tokenExpiry = null;
   }
@@ -170,12 +193,14 @@ export class NinjaOneAPI {
   }
 
   // Device Management
+  
   async getDevices(df?: string, pageSize?: number, after?: number): Promise<any> {
     return this.makeRequest(`/v2/devices${this.buildQuery({ df, pageSize, after })}`);
   }
 
-  async getDevice(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}`); 
+  async getDevice(id: number): Promise<any> {
+    // Owner information is available via the assignedOwnerUid field in this response.
+    return this.makeRequest(`/v2/device/${id}`);
   }
 
   async getDeviceDashboardUrl(id: number): Promise<any> { 
@@ -183,85 +208,64 @@ export class NinjaOneAPI {
   }
 
   async setDeviceMaintenance(id: number, mode: string): Promise<any> {
-    return this.makeRequest(`/v2/device/${id}/maintenance`, { 
-      method: 'PUT', 
-      body: JSON.stringify({ mode }) 
-    });
+    if (mode === 'OFF') {
+    return this.makeRequest(`/v2/device/${id}/maintenance`, 'DELETE');
+    }
+  
+    const now = Math.floor(Date.now() / 1000);  // Current Unix timestamp in seconds
+
+    const body = {
+    disabledFeatures: ['ALERTS', 'PATCHING', 'AVSCANS', 'TASKS'],
+    start: now + 5,  // Start in 5 seconds (buffer for API processing)
+    end: now + (24 * 60 * 60),  // End in 24 hours
+    reasonMessage: 'Maintenance mode enabled via API'
+    };
+  
+    return this.makeRequest(`/v2/device/${id}/maintenance`, 'PUT', body);
   }
 
-  async rebootDevice(id: number, mode: string): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/reboot/${mode}`, { method: 'POST' }); 
-  }
-
-  async runDeviceScript(id: number, scriptId: string, parameters?: any, runAs?: string): Promise<any> {
-    const body: any = { scriptId };
-    if (parameters) body.parameters = parameters;
-    if (runAs) body.runAs = runAs;
-    return this.makeRequest(`/v2/device/${id}/script/run`, { 
-      method: 'POST', 
-      body: JSON.stringify(body) 
-    });
-  }
-
-  async getDeviceScriptingOptions(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/scripting/options`); 
+  async rebootDevice(id: number, mode: string, reason?: string): Promise<any> {
+    const body = {
+      reason: reason || 'Reboot requested via API'
+    };
+    return this.makeRequest(`/v2/device/${id}/reboot/${mode}`, 'POST', body);
   }
 
   async approveDevices(mode: string, deviceIds: number[]): Promise<any> {
-    return this.makeRequest(`/v2/devices/approval/${mode}`, { 
-      method: 'POST', 
-      body: JSON.stringify({ deviceIds }) 
-    });
+    const body = { devices: deviceIds };
+    return this.makeRequest(`/v2/devices/approval/${mode}`, 'POST', body);
   }
 
   // Device Patches
+  
   async scanDeviceOSPatches(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/patch/os/scan`, { method: 'POST' }); 
+    return this.makeRequest(`/v2/device/${id}/patch/os/scan`, 'POST'); 
   }
 
   async applyDeviceOSPatches(id: number, patches: any[]): Promise<any> {
-    return this.makeRequest(`/v2/device/${id}/patch/os/apply`, { 
-      method: 'POST', 
-      body: JSON.stringify({ patches }) 
-    });
+    return this.makeRequest(`/v2/device/${id}/patch/os/apply`, 'POST', { patches });
   }
 
   async scanDeviceSoftwarePatches(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/patch/software/scan`, { method: 'POST' }); 
+    return this.makeRequest(`/v2/device/${id}/patch/software/scan`, 'POST'); 
   }
 
   async applyDeviceSoftwarePatches(id: number, patches: any[]): Promise<any> {
-    return this.makeRequest(`/v2/device/${id}/patch/software/apply`, { 
-      method: 'POST', 
-      body: JSON.stringify({ patches }) 
-    });
+    return this.makeRequest(`/v2/device/${id}/patch/software/apply`, 'POST', { patches });
   }
 
   // Device Services
+  
   async controlWindowsService(id: number, serviceId: string, action: string): Promise<any> {
-    return this.makeRequest(`/v2/device/${id}/windows-service/${serviceId}/control`, { 
-      method: 'POST', 
-      body: JSON.stringify({ action }) 
-    });
+    return this.makeRequest(`/v2/device/${id}/windows-service/${serviceId}/control`, 'POST', { action });
   }
 
   async configureWindowsService(id: number, serviceId: string, startupType: string): Promise<any> {
-    return this.makeRequest(`/v2/device/${id}/windows-service/${serviceId}/configure`, { 
-      method: 'PUT', 
-      body: JSON.stringify({ startupType }) 
-    });
-  }
-
-  // Device Ownership
-  async getDeviceOwner(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/owner`); 
-  }
-
-  async setDeviceOwner(id: number, ownerUid: string): Promise<any> {
-    return this.makeRequest(`/v2/device/${id}/owner/${ownerUid}`, { method: 'PUT' });
+    return this.makeRequest(`/v2/device/${id}/windows-service/${serviceId}/configure`, 'POST', { startupType });
   }
 
   // Policy Management
+  
   async getPolicies(templateOnly?: boolean): Promise<any> {
     return this.makeRequest(`/v2/policies${this.buildQuery({ templateOnly })}`);
   }
@@ -271,6 +275,7 @@ export class NinjaOneAPI {
   }
 
   // Organization Management
+  
   async getOrganizations(pageSize?: number, after?: number): Promise<any> {
     return this.makeRequest(`/v2/organizations${this.buildQuery({ pageSize, after })}`);
   }
@@ -291,13 +296,11 @@ export class NinjaOneAPI {
     const body: any = { installerType };
     if (locationId) body.locationId = locationId;
     if (organizationId) body.organizationId = organizationId;
-    return this.makeRequest('/v2/organization/generate-installer', { 
-      method: 'POST', 
-      body: JSON.stringify(body) 
-    });
+    return this.makeRequest('/v2/organization/generate-installer', 'POST', body);
   }
 
   // Contact Management
+  
   async getContacts(): Promise<any> { 
     return this.makeRequest('/v2/contacts'); 
   }
@@ -306,34 +309,43 @@ export class NinjaOneAPI {
     return this.makeRequest(`/v2/contact/${id}`); 
   }
 
-  async createContact(organizationId: number, firstName: string, lastName: string, email: string, phone?: string, jobTitle?: string): Promise<any> {
+  async createContact(
+    organizationId: number, 
+    firstName: string, 
+    lastName: string, 
+    email: string, 
+    phone?: string, 
+    jobTitle?: string
+  ): Promise<any> {
     const body: any = { organizationId, firstName, lastName, email };
     if (phone) body.phone = phone;
     if (jobTitle) body.jobTitle = jobTitle;
-    return this.makeRequest('/v2/contacts', { 
-      method: 'POST', 
-      body: JSON.stringify(body) 
-    });
+    return this.makeRequest('/v2/contacts', 'POST', body);
   }
 
-  async updateContact(id: number, firstName?: string, lastName?: string, email?: string, phone?: string, jobTitle?: string): Promise<any> {
+  async updateContact(
+    id: number, 
+    firstName?: string, 
+    lastName?: string, 
+    email?: string, 
+    phone?: string, 
+    jobTitle?: string
+  ): Promise<any> {
     const body: any = {};
-    if (firstName) body.firstName = firstName;
-    if (lastName) body.lastName = lastName;
-    if (email) body.email = email;
-    if (phone) body.phone = phone;
-    if (jobTitle) body.jobTitle = jobTitle;
-    return this.makeRequest(`/v2/contact/${id}`, { 
-      method: 'PATCH', 
-      body: JSON.stringify(body) 
-    });
+    if (firstName !== undefined) body.firstName = firstName;
+    if (lastName !== undefined) body.lastName = lastName;
+    if (email !== undefined) body.email = email;
+    if (phone !== undefined) body.phone = phone;
+    if (jobTitle !== undefined) body.jobTitle = jobTitle;
+    return this.makeRequest(`/v2/contact/${id}`, 'PATCH', body);
   }
 
   async deleteContact(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/contact/${id}`, { method: 'DELETE' }); 
+    return this.makeRequest(`/v2/contact/${id}`, 'DELETE'); 
   }
 
   // Alert Management
+  
   async getAlerts(deviceFilter?: string, since?: string): Promise<any> {
     return this.makeRequest(`/v2/alerts${this.buildQuery({ df: deviceFilter, since })}`);
   }
@@ -343,7 +355,7 @@ export class NinjaOneAPI {
   }
 
   async resetAlert(uid: string): Promise<any> { 
-    return this.makeRequest(`/v2/alert/${uid}/reset`, { method: 'POST' }); 
+    return this.makeRequest(`/v2/alert/${uid}`, 'DELETE'); 
   }
 
   async getDeviceAlerts(id: number, lang?: string): Promise<any> {
@@ -351,6 +363,7 @@ export class NinjaOneAPI {
   }
 
   // User Management
+  
   async getEndUsers(): Promise<any> { 
     return this.makeRequest('/v2/user/end-users'); 
   }
@@ -368,20 +381,15 @@ export class NinjaOneAPI {
   }
 
   async addRoleMembers(roleId: number, userIds: number[]): Promise<any> {
-    return this.makeRequest(`/v2/user/role/${roleId}/add-members`, { 
-      method: 'POST', 
-      body: JSON.stringify({ userIds }) 
-    });
+    return this.makeRequest(`/v2/user/role/${roleId}/add-members`, 'PATCH', userIds);
   }
 
   async removeRoleMembers(roleId: number, userIds: number[]): Promise<any> {
-    return this.makeRequest(`/v2/user/role/${roleId}/remove-members`, { 
-      method: 'POST', 
-      body: JSON.stringify({ userIds }) 
-    });
+    return this.makeRequest(`/v2/user/role/${roleId}/remove-members`, 'PATCH', userIds);
   }
 
   // Queries - System Information
+  
   async queryAntivirusStatus(df?: string, cursor?: string, pageSize?: number): Promise<any> {
     return this.makeRequest(`/v2/queries/antivirus-status${this.buildQuery({ df, cursor, pageSize })}`);
   }
@@ -407,6 +415,7 @@ export class NinjaOneAPI {
   }
 
   // Queries - Hardware
+  
   async queryProcessors(df?: string, cursor?: string, pageSize?: number): Promise<any> {
     return this.makeRequest(`/v2/queries/processors${this.buildQuery({ df, cursor, pageSize })}`);
   }
@@ -432,6 +441,7 @@ export class NinjaOneAPI {
   }
 
   // Queries - Software and Patches
+  
   async querySoftware(df?: string, cursor?: string, pageSize?: number): Promise<any> {
     return this.makeRequest(`/v2/queries/software${this.buildQuery({ df, cursor, pageSize })}`);
   }
@@ -457,6 +467,7 @@ export class NinjaOneAPI {
   }
 
   // Queries - Custom Fields and Policies
+  
   async queryCustomFields(df?: string, cursor?: string, pageSize?: number): Promise<any> {
     return this.makeRequest(`/v2/queries/custom-fields${this.buildQuery({ df, cursor, pageSize })}`);
   }
@@ -478,11 +489,13 @@ export class NinjaOneAPI {
   }
 
   // Queries - Backup
+  
   async queryBackupUsage(df?: string, cursor?: string, pageSize?: number): Promise<any> {
     return this.makeRequest(`/v2/queries/backup/usage${this.buildQuery({ df, cursor, pageSize })}`);
   }
 
   // Activities and Software
+  
   async getDeviceActivities(id: number, pageSize?: number, olderThan?: string): Promise<any> {
     return this.makeRequest(`/v2/device/${id}/activities${this.buildQuery({ pageSize, olderThan })}`);
   }

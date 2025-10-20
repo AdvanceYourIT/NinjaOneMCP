@@ -125,7 +125,7 @@ npm run dev
 // List devices with filter
 await ninjaAPI.getDevices("org = 1", 50, 0);
 
-// Get specific device
+// Get specific device (owner UID available via assignedOwnerUid field)
 await ninjaAPI.getDevice(12345);
 
 // Reboot device
@@ -134,6 +134,9 @@ await ninjaAPI.rebootDevice(12345, "NORMAL");
 // Set maintenance mode
 await ninjaAPI.setDeviceMaintenance(12345, "ON");
 ```
+
+> ℹ️ **Note:** The NinjaONE public API does not expose dedicated endpoints for reading or setting device owners. Owner
+> information is returned as the `assignedOwnerUid` field in the `getDevice` response.
 
 ### Query Operations
 ```typescript

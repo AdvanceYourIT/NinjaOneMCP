@@ -81,15 +81,14 @@ This document provides detailed information about the available tools in the Nin
 
 The server also exposes the following additional tools that cover device control, patch actions, organization details, alert details, users/roles, contacts, and approvals/policies.
 
-### Device Control & Scripting
+### Device Control
 - `set_device_maintenance`: Set maintenance mode ON/OFF for a device
 - `get_device_dashboard_url`: Get device dashboard URL
-- `run_device_script`: Run a script on a device (optional parameters and runAs)
-- `get_device_scripting_options`: Get scripting options for a device
 - `control_windows_service`: Control a Windows service (START/STOP/RESTART)
 - `configure_windows_service`: Configure a Windows service startup type (e.g., AUTOMATIC/MANUAL/DISABLED)
-- `get_device_owner`: Get device owner
-- `set_device_owner`: Set device owner by UID
+
+> ℹ️ **Owner details:** The NinjaONE API currently exposes device owner information only via the `assignedOwnerUid` field
+> returned from `get_device`. Dedicated owner management endpoints are not available.
 
 ### Device Patch Actions
 - `scan_device_os_patches`: Scan for OS patches on a device
@@ -136,15 +135,10 @@ The server also exposes the following additional tools that cover device control
 
 Below are minimal example payloads you can use when calling tools via an MCP client.
 
-### Device Control & Scripting
+### Device Control
 - `set_device_maintenance`
 ```json
 { "id": 12345, "mode": "ON" }
-```
-
-- `run_device_script`
-```json
-{ "id": 12345, "scriptId": "abcd-1234", "parameters": { "key": "value" }, "runAs": "SYSTEM" }
 ```
 
 - `control_windows_service`
@@ -213,12 +207,6 @@ Below are minimal example payloads you can use when calling tools via an MCP cli
 - `get_policies`
 ```json
 { "templateOnly": true }
-```
-
-### Device Scripting Options
-- `get_device_scripting_options`
-```json
-{ "id": 12345 }
 ```
 
 ### Device Approvals
@@ -371,8 +359,6 @@ The current implementation includes core tools. A full implementation would incl
 
 ### Device Operations
 - `set_device_maintenance`
-- `run_device_script`
-- `get_device_scripting_options`
 - `approve_devices`
 
 ### Patch Management
