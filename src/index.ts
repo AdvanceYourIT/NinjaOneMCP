@@ -263,6 +263,98 @@ const TOOLS = [
       required: ['installerType']
     }
   },
+  // Organization CRUD
+  {
+    name: 'create_organization',
+    description: 'Create a new organization',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Organization name' },
+        description: { type: 'string', description: 'Organization description' },
+        nodeApprovalMode: {
+          type: 'string',
+          description: 'Device approval mode (AUTOMATIC, MANUAL, REJECT)',
+          enum: ['AUTOMATIC', 'MANUAL', 'REJECT']
+        },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Tags' }
+      },
+      required: ['name']
+    }
+  },
+  {
+    name: 'update_organization',
+    description: 'Update an organization',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Organization ID' },
+        name: { type: 'string', description: 'Organization name' },
+        description: { type: 'string', description: 'Organization description' },
+        nodeApprovalMode: {
+          type: 'string',
+          description: 'Device approval mode (AUTOMATIC, MANUAL, REJECT)',
+          enum: ['AUTOMATIC', 'MANUAL', 'REJECT']
+        },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Tags' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'delete_organization',
+    description: 'Delete an organization',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Organization ID' }
+      },
+      required: ['id']
+    }
+  },
+
+  // Location CRUD
+  {
+    name: 'create_location',
+    description: 'Create a new location for an organization',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        organizationId: { type: 'number', description: 'Organization ID' },
+        name: { type: 'string', description: 'Location name' },
+        address: { type: 'string', description: 'Location address' },
+        description: { type: 'string', description: 'Location description' }
+      },
+      required: ['organizationId', 'name']
+    }
+  },
+  {
+    name: 'update_location',
+    description: 'Update a location',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        organizationId: { type: 'number', description: 'Organization ID' },
+        locationId: { type: 'number', description: 'Location ID' },
+        name: { type: 'string', description: 'Location name' },
+        address: { type: 'string', description: 'Location address' },
+        description: { type: 'string', description: 'Location description' }
+      },
+      required: ['organizationId', 'locationId']
+    }
+  },
+  {
+    name: 'delete_location',
+    description: 'Delete a location',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        organizationId: { type: 'number', description: 'Organization ID' },
+        locationId: { type: 'number', description: 'Location ID' }
+      },
+      required: ['organizationId', 'locationId']
+    }
+  },
 
   // Alerts - details
   {
@@ -754,7 +846,54 @@ class NinjaOneMCPServer {
 
   private async routeToolCall(name: string, args: any) {
     try {
-      const data = await this.callAPIMethod(name, args);
+      let data: any;
+      switch (name) {
+        // Organization CRUD
+        case 'create_organization':
+          data = await this.api.createOrganization(
+            args.name,
+            args.description,
+            args.nodeApprovalMode,
+            args.tags
+          );
+          break;
+        case 'update_organization':
+          data = await this.api.updateOrganization(
+            args.id,
+            args.name,
+            args.description,
+            args.nodeApprovalMode,
+            args.tags
+          );
+          break;
+        case 'delete_organization':
+          data = await this.api.deleteOrganization(args.id);
+          break;
+        // Location CRUD
+        case 'create_location':
+          data = await this.api.createLocation(
+            args.organizationId,
+            args.name,
+            args.address,
+            args.description
+          );
+          break;
+        case 'update_location':
+          data = await this.api.updateLocation(
+            args.organizationId,
+            args.locationId,
+            args.name,
+            args.address,
+            args.description
+          );
+          break;
+        case 'delete_location':
+          data = await this.api.deleteLocation(args.organizationId, args.locationId);
+          break;
+        default:
+          data = await this.callAPIMethod(name, args);
+          break;
+      }
       return {
         content: [{
           type: 'text',
