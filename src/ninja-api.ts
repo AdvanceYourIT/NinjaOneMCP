@@ -305,10 +305,76 @@ export class NinjaOneAPI {
     return this.makeRequest('/v2/organization/generate-installer', 'POST', body);
   }
 
+  // Organization CRUD
+
+  async createOrganization(
+    name: string,
+    description?: string,
+    nodeApprovalMode?: string,
+    tags?: string[]
+  ): Promise<any> {
+    const body: any = { name };
+    if (description) body.description = description;
+    if (nodeApprovalMode) body.nodeApprovalMode = nodeApprovalMode;
+    if (tags) body.tags = tags;
+    return this.makeRequest('/v2/organizations', 'POST', body);
+  }
+
+  async updateOrganization(
+    id: number,
+    name?: string,
+    description?: string,
+    nodeApprovalMode?: string,
+    tags?: string[]
+  ): Promise<any> {
+    const body: any = {};
+    if (name !== undefined) body.name = name;
+    if (description !== undefined) body.description = description;
+    if (nodeApprovalMode !== undefined) body.nodeApprovalMode = nodeApprovalMode;
+    if (tags !== undefined) body.tags = tags;
+    return this.makeRequest(`/v2/organization/${id}`, 'PATCH', body);
+  }
+
+  async deleteOrganization(id: number): Promise<any> {
+    return this.makeRequest(`/v2/organization/${id}`, 'DELETE');
+  }
+
+  // Location CRUD
+
+  async createLocation(
+    organizationId: number,
+    name: string,
+    address?: string,
+    description?: string
+  ): Promise<any> {
+    const body: any = { name };
+    if (address) body.address = address;
+    if (description) body.description = description;
+    return this.makeRequest(`/v2/organization/${organizationId}/locations`, 'POST', body);
+  }
+
+  async updateLocation(
+    organizationId: number,
+    locationId: number,
+    name?: string,
+    address?: string,
+    description?: string
+  ): Promise<any> {
+    const body: any = {};
+    if (name !== undefined) body.name = name;
+    if (address !== undefined) body.address = address;
+    if (description !== undefined) body.description = description;
+    return this.makeRequest(`/v2/organization/${organizationId}/location/${locationId}`, 'PATCH', body);
+  }
+
+  async deleteLocation(organizationId: number, locationId: number): Promise<any> {
+    return this.makeRequest(`/v2/organization/${organizationId}/location/${locationId}`, 'DELETE');
+  }
+
   // Contact Management
-  
-  async getContacts(): Promise<any> { 
-    return this.makeRequest('/v2/contacts'); 
+
+  async getContacts(): Promise<any> {
+    return this.makeRequest('/v2/contacts');
   }
 
   async getContact(id: number): Promise<any> { 
