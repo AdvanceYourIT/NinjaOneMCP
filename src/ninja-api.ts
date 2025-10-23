@@ -378,11 +378,11 @@ export class NinjaOneAPI {
     if (name !== undefined) body.name = name;
     if (address !== undefined) body.address = address;
     if (description !== undefined) body.description = description;
-    return this.makeRequest(`/v2/location/${locationId}`, 'PATCH', body);
+    return this.makeRequest(`/v2/organization/${organizationId}/locations/${locationId}`, 'PATCH', body);
   }
 
   async deleteLocation(organizationId: number, locationId: number): Promise<any> {
-    return this.makeRequest(`/v2/location/${locationId}`, 'DELETE');
+    return this.makeRequest(`/v2/organization/${organizationId}/locations/${locationId}`, 'DELETE');
   }
 
   // Contact Management
