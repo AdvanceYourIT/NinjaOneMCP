@@ -315,7 +315,7 @@ export class NinjaOneAPI {
   ): Promise<any> {
     const body: any = { name };
     if (description) body.description = description;
-    if (nodeApprovalMode) body.nodeApprovalMode = nodeApprovalMode;
+    if (nodeApprovalMode) body.nodeApprovalMode = nodeApprovalMode.toUpperCase();
     if (tags) body.tags = tags;
     return this.makeRequest('/v2/organizations', 'POST', body);
   }
@@ -330,13 +330,27 @@ export class NinjaOneAPI {
     const body: any = {};
     if (name !== undefined) body.name = name;
     if (description !== undefined) body.description = description;
-    if (nodeApprovalMode !== undefined) body.nodeApprovalMode = nodeApprovalMode;
+    if (nodeApprovalMode !== undefined) body.nodeApprovalMode = nodeApprovalMode.toUpperCase();
     if (tags !== undefined) body.tags = tags;
-    return this.makeRequest(`/v2/organization/${id}`, 'PATCH', body);
+    try {
+      return await this.makeRequest(`/v2/organizations/${id}`, 'PATCH', body);
+    } catch (error: any) {
+      if (typeof error?.message === 'string' && error.message.includes('404')) {
+        return this.makeRequest(`/v2/organization/${id}`, 'PATCH', body);
+      }
+      throw error;
+    }
   }
 
   async deleteOrganization(id: number): Promise<any> {
-    return this.makeRequest(`/v2/organization/${id}`, 'DELETE');
+    try {
+      return await this.makeRequest(`/v2/organizations/${id}`, 'DELETE');
+    } catch (error: any) {
+      if (typeof error?.message === 'string' && error.message.includes('404')) {
+        return this.makeRequest(`/v2/organization/${id}`, 'DELETE');
+      }
+      throw error;
+    }
   }
 
   // Location CRUD
@@ -364,11 +378,11 @@ export class NinjaOneAPI {
     if (name !== undefined) body.name = name;
     if (address !== undefined) body.address = address;
     if (description !== undefined) body.description = description;
-    return this.makeRequest(`/v2/organization/${organizationId}/location/${locationId}`, 'PATCH', body);
+    return this.makeRequest(`/v2/location/${locationId}`, 'PATCH', body);
   }
 
   async deleteLocation(organizationId: number, locationId: number): Promise<any> {
-    return this.makeRequest(`/v2/organization/${organizationId}/location/${locationId}`, 'DELETE');
+    return this.makeRequest(`/v2/location/${locationId}`, 'DELETE');
   }
 
   // Contact Management
