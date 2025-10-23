@@ -237,9 +237,11 @@ export class NinjaOneAPI {
   }
 
   // Device Patches
-  
-  async scanDeviceOSPatches(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/patch/os/scan`, 'POST'); 
+
+  // Patch approval or rejection is only available via the NinjaOne dashboard or policies;
+  // the public API does not provide endpoints for that workflow.
+  async scanDeviceOSPatches(id: number): Promise<any> {
+    return this.makeRequest(`/v2/device/${id}/patch/os/scan`, 'POST');
   }
 
   async applyDeviceOSPatches(id: number, patches: any[]): Promise<any> {
@@ -270,8 +272,12 @@ export class NinjaOneAPI {
     return this.makeRequest(`/v2/policies${this.buildQuery({ templateOnly })}`);
   }
 
-  async getDevicePolicyOverrides(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/policy/overrides`); 
+  async getDevicePolicyOverrides(id: number): Promise<any> {
+    return this.makeRequest(`/v2/device/${id}/policy/overrides`);
+  }
+
+  async resetDevicePolicyOverrides(id: number): Promise<any> {
+    return this.makeRequest(`/v2/device/${id}/policy/overrides`, 'DELETE');
   }
 
   // Organization Management

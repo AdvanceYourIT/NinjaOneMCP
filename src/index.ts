@@ -386,6 +386,17 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: { id: { type: 'number' } }, required: ['id'] }
   },
   {
+    name: 'reset_device_policy_overrides',
+    description: 'Reset/remove all policy overrides for a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' }
+      },
+      required: ['id']
+    }
+  },
+  {
     name: 'get_policies',
     description: 'List policies (optionally templates only)',
     inputSchema: { type: 'object', properties: { templateOnly: { type: 'boolean' } } }
@@ -910,6 +921,8 @@ class NinjaOneMCPServer {
         return this.api.approveDevices(args.mode, args.deviceIds);
       case 'get_device_policy_overrides':
         return this.api.getDevicePolicyOverrides(args.id);
+      case 'reset_device_policy_overrides':
+        return this.api.resetDevicePolicyOverrides(args.id);
       case 'get_policies':
         return this.api.getPolicies(args.templateOnly);
 

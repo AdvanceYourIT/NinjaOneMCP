@@ -125,6 +125,7 @@ The server also exposes the following additional tools that cover device control
 ### Device Approvals & Policies
 - `approve_devices`: Approve or deny multiple devices (by IDs)
 - `get_device_policy_overrides`: Get device policy overrides
+- `reset_device_policy_overrides`: Reset/remove all policy overrides for a device
 - `get_policies`: List policies (optionally templates only)
 
 ### Region Utilities
@@ -184,17 +185,6 @@ Below are minimal example payloads you can use when calling tools via an MCP cli
 - `get_device_alerts`
 ```json
 { "id": 12345, "lang": "en-US" }
-```
-
-### Device Owner
-- `get_device_owner`
-```json
-{ "id": 12345 }
-```
-
-- `set_device_owner`
-```json
-{ "id": 12345, "ownerUid": "user-uid-abc" }
 ```
 
 ### Device Dashboard URL
