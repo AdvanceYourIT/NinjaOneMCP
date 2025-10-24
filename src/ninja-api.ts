@@ -7,13 +7,6 @@ type CreateEndUserPayload = {
   fullPortalAccess?: boolean;
 };
 
-type EndUserPatchPayload = {
-  firstName?: string;
-  lastName?: string;
-  organizationId?: number;
-  fullPortalAccess?: boolean;
-};
-
 export class NinjaOneAPI {
   private baseUrl: string | null = null;
   private clientId: string;
@@ -487,8 +480,18 @@ export class NinjaOneAPI {
     return this.makeRequest(`${endpoint}${query}`, 'POST', body);
   }
 
-  async updateEndUser(id: number, updates: EndUserPatchPayload): Promise<any> {
-    const body = this.pruneUndefined(updates);
+  async updateEndUser(
+    id: number,
+    firstName?: string,
+    lastName?: string,
+    email?: string,
+    phone?: string  // Note: Phone field is read-only after creation and cannot be updated
+  ): Promise<any> {
+    const body: any = {};
+    if (firstName !== undefined) body.firstName = firstName;
+    if (lastName !== undefined) body.lastName = lastName;
+    if (email !== undefined) body.email = email;
+    if (phone !== undefined) body.phone = phone;  // This will be ignored by the API
     return this.makeRequest(this.buildUserEntityPath('end-user', id), 'PATCH', body);
   }
 

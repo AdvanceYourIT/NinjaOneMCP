@@ -172,13 +172,19 @@ await ninjaAPI.applyDeviceOSPatches(12345, patchArray);
 
 ## API Limitations
 
-The following operations are NOT supported by the NinjaOne Public API:
+The NinjaOne Public API has the following known limitations:
 
+### Organizations & Locations
 - **Delete Organization**: Organizations can only be deleted via the NinjaOne dashboard
 - **Delete Location**: Locations can only be deleted via the NinjaOne dashboard  
 - **Update nodeApprovalMode**: This setting is read-only after organization creation
 
-All other CRUD operations for organizations and locations work as expected.
+### End Users
+- **Update Phone**: The phone field can be set during creation but cannot be updated afterwards
+
+### Other Restrictions
+- **Script Execution**: Running scripts requires authorization code flow, not supported with client credentials
+- All other CRUD operations work as expected
 
 ## MCP Integration
 
