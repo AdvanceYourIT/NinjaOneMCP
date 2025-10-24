@@ -305,10 +305,77 @@ export class NinjaOneAPI {
     return this.makeRequest('/v2/organization/generate-installer', 'POST', body);
   }
 
+  // Organization CRUD
+  // Note: DELETE operations for organizations and locations are NOT available
+  // in the Public API and can only be performed via the NinjaOne dashboard.
+
+  async createOrganization(
+    name: string,
+    description?: string,
+    nodeApprovalMode?: string,
+    tags?: string[]
+  ): Promise<any> {
+    const body: any = { name };
+    if (description) body.description = description;
+    if (nodeApprovalMode) body.nodeApprovalMode = nodeApprovalMode.toUpperCase();
+    if (tags) body.tags = tags;
+    return this.makeRequest('/v2/organizations', 'POST', body);
+  }
+
+  async updateOrganization(
+    id: number,
+    name?: string,
+    description?: string,
+    nodeApprovalMode?: string,  // Note: This field is read-only after creation and cannot be updated
+    tags?: string[]
+  ): Promise<any> {
+    const body: any = {};
+    if (name !== undefined) body.name = name;
+    if (description !== undefined) body.description = description;
+    // nodeApprovalMode is intentionally ignored because the public API treats it as read-only after creation.
+    if (tags !== undefined) body.tags = tags;
+    try {
+      return await this.makeRequest(`/v2/organizations/${id}`, 'PATCH', body);
+    } catch (error: any) {
+      if (typeof error?.message === 'string' && error.message.includes('404')) {
+        return this.makeRequest(`/v2/organization/${id}`, 'PATCH', body);
+      }
+      throw error;
+    }
+  }
+
+  // Location CRUD
+
+  async createLocation(
+    organizationId: number,
+    name: string,
+    address?: string,
+    description?: string
+  ): Promise<any> {
+    const body: any = { name };
+    if (address) body.address = address;
+    if (description) body.description = description;
+    return this.makeRequest(`/v2/organization/${organizationId}/locations`, 'POST', body);
+  }
+
+  async updateLocation(
+    organizationId: number,
+    locationId: number,
+    name?: string,
+    address?: string,
+    description?: string
+  ): Promise<any> {
+    const body: any = {};
+    if (name !== undefined) body.name = name;
+    if (address !== undefined) body.address = address;
+    if (description !== undefined) body.description = description;
+    return this.makeRequest(`/v2/organization/${organizationId}/locations/${locationId}`, 'PATCH', body);
+  }
+
   // Contact Management
-  
-  async getContacts(): Promise<any> { 
-    return this.makeRequest('/v2/contacts'); 
+
+  async getContacts(): Promise<any> {
+    return this.makeRequest('/v2/contacts');
   }
 
   async getContact(id: number): Promise<any> { 

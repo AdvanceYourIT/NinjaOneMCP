@@ -170,6 +170,16 @@ await ninjaAPI.scanDeviceOSPatches(12345);
 await ninjaAPI.applyDeviceOSPatches(12345, patchArray);
 ```
 
+## API Limitations
+
+The following operations are NOT supported by the NinjaOne Public API:
+
+- **Delete Organization**: Organizations can only be deleted via the NinjaOne dashboard
+- **Delete Location**: Locations can only be deleted via the NinjaOne dashboard  
+- **Update nodeApprovalMode**: This setting is read-only after organization creation
+
+All other CRUD operations for organizations and locations work as expected.
+
 ## MCP Integration
 
 ### Claude Desktop Configuration (Generic)
