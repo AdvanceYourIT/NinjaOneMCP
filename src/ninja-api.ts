@@ -491,8 +491,8 @@ export class NinjaOneAPI {
     return this.makeRequest('/v2/user/technicians');
   }
 
-  async getTechnician(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/user/technician/${id}`); 
+  async deleteEndUser(id: number): Promise<any> {
+    return this.makeRequest(`/v2/user/end-user/${id}`, 'DELETE');
   }
 
   async addRoleMembers(roleId: number, userIds: number[]): Promise<any> {
