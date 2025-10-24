@@ -114,6 +114,17 @@ const TOOLS = [
     }
   },
   {
+    name: 'get_device_software',
+    description: 'Get installed software for a specific device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' }
+      },
+      required: ['id']
+    }
+  },
+  {
     name: 'get_device_dashboard_url',
     description: 'Get the dashboard URL for a specific device',
     inputSchema: {
@@ -952,6 +963,11 @@ class NinjaOneMCPServer {
         return this.api.getDeviceAlerts(args.id, args.lang);
       case 'get_device_activities':
         return this.api.getDeviceActivities(args.id, args.pageSize);
+      case 'get_device_software':
+        if (typeof args.id !== 'number') {
+          throw new McpError(ErrorCode.InvalidParams, 'Device ID must be a number');
+        }
+        return this.api.getDeviceSoftware(args.id);
       case 'search_devices_by_name':
         return this.searchDevicesByName(args.name, args.limit || 10);
       case 'find_windows11_devices':
