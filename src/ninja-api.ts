@@ -437,16 +437,59 @@ export class NinjaOneAPI {
 
   // User Management
   
-  async getEndUsers(): Promise<any> { 
-    return this.makeRequest('/v2/user/end-users'); 
+  async getEndUsers(): Promise<any> {
+    return this.makeRequest('/v2/user/end-users');
   }
 
-  async getEndUser(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/user/end-user/${id}`); 
+  async getEndUser(id: number): Promise<any> {
+    return this.makeRequest(`/v2/user/end-user/${id}`);
   }
 
-  async getTechnicians(): Promise<any> { 
-    return this.makeRequest('/v2/user/technicians'); 
+  async createEndUser(
+    firstName: string,
+    lastName: string,
+    email: string,
+    phone?: string,
+    organizationId?: number,
+    fullPortalAccess?: boolean,
+    sendInvitation?: boolean
+  ): Promise<any> {
+    const body: Record<string, any> = {
+      firstName,
+      lastName,
+      email
+    };
+
+    if (phone !== undefined) body.phone = phone;
+    if (organizationId !== undefined) body.organizationId = organizationId;
+    if (fullPortalAccess !== undefined) body.fullPortalAccess = fullPortalAccess;
+
+    const query = this.buildQuery({ sendInvitation });
+    return this.makeRequest(`/v2/user/end-users${query}`, 'POST', body);
+  }
+
+  async updateEndUser(
+    id: number,
+    firstName?: string,
+    lastName?: string,
+    organizationId?: number,
+    fullPortalAccess?: boolean
+  ): Promise<any> {
+    const body: Record<string, any> = {};
+    if (firstName !== undefined) body.firstName = firstName;
+    if (lastName !== undefined) body.lastName = lastName;
+    if (organizationId !== undefined) body.organizationId = organizationId;
+    if (fullPortalAccess !== undefined) body.fullPortalAccess = fullPortalAccess;
+
+    return this.makeRequest(`/v2/user/end-user/${id}`, 'PATCH', body);
+  }
+
+  async deleteEndUser(id: number): Promise<any> {
+    return this.makeRequest(`/v2/user/end-user/${id}`, 'DELETE');
+  }
+
+  async getTechnicians(): Promise<any> {
+    return this.makeRequest('/v2/user/technicians');
   }
 
   async getTechnician(id: number): Promise<any> { 
