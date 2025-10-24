@@ -389,15 +389,15 @@ const TOOLS = [
   },
   {
     name: 'update_end_user',
-    description: 'Update properties of an end user',
+    description: 'Update an end user (Note: phone field cannot be changed after creation)',
     inputSchema: {
       type: 'object',
       properties: {
-        id: { type: 'number', description: 'End user identifier' },
-        firstName: { type: 'string', description: 'Updated first name' },
-        lastName: { type: 'string', description: 'Updated last name' },
-        organizationId: { type: 'number', description: 'Updated organization identifier' },
-        fullPortalAccess: { type: 'boolean', description: 'Updated portal access flag' }
+        id: { type: 'number', description: 'End user ID' },
+        firstName: { type: 'string', description: 'First name' },
+        lastName: { type: 'string', description: 'Last name' },
+        email: { type: 'string', description: 'Email address' },
+        phone: { type: 'string', description: 'Phone number (read-only after creation)' }
       },
       required: ['id']
     }
@@ -1058,12 +1058,13 @@ class NinjaOneMCPServer {
           args.sendInvitation
         );
       case 'update_end_user':
-        return this.api.updateEndUser(args.id, {
-          firstName: args.firstName,
-          lastName: args.lastName,
-          organizationId: args.organizationId,
-          fullPortalAccess: args.fullPortalAccess
-        });
+        return this.api.updateEndUser(
+          args.id,
+          args.firstName,
+          args.lastName,
+          args.email,
+          args.phone
+        );
       case 'delete_end_user':
         return this.api.deleteEndUser(args.id);
       case 'get_technicians':
