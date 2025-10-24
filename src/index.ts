@@ -1047,22 +1047,23 @@ class NinjaOneMCPServer {
         return this.api.getEndUser(args.id);
       case 'create_end_user':
         return this.api.createEndUser(
-          args.firstName,
-          args.lastName,
-          args.email,
-          args.phone,
-          args.organizationId,
-          args.fullPortalAccess,
+          {
+            firstName: args.firstName,
+            lastName: args.lastName,
+            email: args.email,
+            phone: args.phone,
+            organizationId: args.organizationId,
+            fullPortalAccess: args.fullPortalAccess
+          },
           args.sendInvitation
         );
       case 'update_end_user':
-        return this.api.updateEndUser(
-          args.id,
-          args.firstName,
-          args.lastName,
-          args.organizationId,
-          args.fullPortalAccess
-        );
+        return this.api.updateEndUser(args.id, {
+          firstName: args.firstName,
+          lastName: args.lastName,
+          organizationId: args.organizationId,
+          fullPortalAccess: args.fullPortalAccess
+        });
       case 'delete_end_user':
         return this.api.deleteEndUser(args.id);
       case 'get_technicians':

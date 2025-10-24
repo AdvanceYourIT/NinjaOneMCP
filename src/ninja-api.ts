@@ -1,3 +1,19 @@
+type CreateEndUserPayload = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  organizationId?: number;
+  fullPortalAccess?: boolean;
+};
+
+type EndUserPatchPayload = {
+  firstName?: string;
+  lastName?: string;
+  organizationId?: number;
+  fullPortalAccess?: boolean;
+};
+
 export class NinjaOneAPI {
   private baseUrl: string | null = null;
   private clientId: string;
@@ -190,6 +206,17 @@ export class NinjaOneAPI {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => v !== undefined && query.append(k, v.toString()));
     return query.toString() ? `?${query}` : '';
+  }
+
+  private pruneUndefined<T extends Record<string, unknown>>(payload: T): Partial<T> {
+    const result: Partial<T> = {};
+    (Object.keys(payload) as (keyof T)[]).forEach((key) => {
+      const value = payload[key];
+      if (value !== undefined) {
+        result[key] = value;
+      }
+    });
+    return result;
   }
 
   // Device Management
@@ -445,42 +472,14 @@ export class NinjaOneAPI {
     return this.makeRequest(`/v2/user/end-user/${id}`);
   }
 
-  async createEndUser(
-    firstName: string,
-    lastName: string,
-    email: string,
-    phone?: string,
-    organizationId?: number,
-    fullPortalAccess?: boolean,
-    sendInvitation?: boolean
-  ): Promise<any> {
-    const body: Record<string, any> = {
-      firstName,
-      lastName,
-      email
-    };
-
-    if (phone !== undefined) body.phone = phone;
-    if (organizationId !== undefined) body.organizationId = organizationId;
-    if (fullPortalAccess !== undefined) body.fullPortalAccess = fullPortalAccess;
-
+  async createEndUser(payload: CreateEndUserPayload, sendInvitation?: boolean): Promise<any> {
+    const body = this.pruneUndefined(payload);
     const query = this.buildQuery({ sendInvitation });
     return this.makeRequest(`/v2/user/end-users${query}`, 'POST', body);
   }
 
-  async updateEndUser(
-    id: number,
-    firstName?: string,
-    lastName?: string,
-    organizationId?: number,
-    fullPortalAccess?: boolean
-  ): Promise<any> {
-    const body: Record<string, any> = {};
-    if (firstName !== undefined) body.firstName = firstName;
-    if (lastName !== undefined) body.lastName = lastName;
-    if (organizationId !== undefined) body.organizationId = organizationId;
-    if (fullPortalAccess !== undefined) body.fullPortalAccess = fullPortalAccess;
-
+  async updateEndUser(id: number, updates: EndUserPatchPayload): Promise<any> {
+    const body = this.pruneUndefined(updates);
     return this.makeRequest(`/v2/user/end-user/${id}`, 'PATCH', body);
   }
 
@@ -490,56 +489,6 @@ export class NinjaOneAPI {
 
   async getTechnicians(): Promise<any> {
     return this.makeRequest('/v2/user/technicians');
-  }
-
-  async getTechnician(id: number): Promise<any> {
-    return this.makeRequest(`/v2/user/technician/${id}`);
-  }
-
-  async createEndUser(
-    firstName: string,
-    lastName: string,
-    email: string,
-    phone?: string,
-    sendInvitation?: boolean
-  ): Promise<any> {
-    const body: Record<string, string> = {
-      firstName,
-      lastName,
-      email,
-    };
-
-    if (phone !== undefined) {
-      body.phone = phone;
-    }
-
-    const endpoint = `/v2/user/end-users${sendInvitation ? '?sendInvitation=true' : ''}`;
-    return this.makeRequest(endpoint, 'POST', body);
-  }
-
-  async updateEndUser(
-    id: number,
-    firstName?: string,
-    lastName?: string,
-    email?: string,
-    phone?: string
-  ): Promise<any> {
-    const body: Record<string, string> = {};
-
-    if (firstName !== undefined) {
-      body.firstName = firstName;
-    }
-    if (lastName !== undefined) {
-      body.lastName = lastName;
-    }
-    if (email !== undefined) {
-      body.email = email;
-    }
-    if (phone !== undefined) {
-      body.phone = phone;
-    }
-
-    return this.makeRequest(`/v2/user/end-user/${id}`, 'PATCH', body);
   }
 
   async deleteEndUser(id: number): Promise<any> {
