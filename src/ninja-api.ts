@@ -219,6 +219,14 @@ export class NinjaOneAPI {
     return result;
   }
 
+  private buildUserCollectionPath(type: 'end-users' | 'technicians'): string {
+    return `/v2/user/${type}`;
+  }
+
+  private buildUserEntityPath(type: 'end-user' | 'technician', id: number): string {
+    return `/v2/user/${type}/${id}`;
+  }
+
   // Device Management
   
   async getDevices(df?: string, pageSize?: number, after?: number): Promise<any> {
@@ -465,34 +473,35 @@ export class NinjaOneAPI {
   // User Management
   
   async getEndUsers(): Promise<any> {
-    return this.makeRequest('/v2/user/end-users');
+    return this.makeRequest(this.buildUserCollectionPath('end-users'));
   }
 
   async getEndUser(id: number): Promise<any> {
-    return this.makeRequest(`/v2/user/end-user/${id}`);
+    return this.makeRequest(this.buildUserEntityPath('end-user', id));
   }
 
   async createEndUser(payload: CreateEndUserPayload, sendInvitation?: boolean): Promise<any> {
     const body = this.pruneUndefined(payload);
     const query = this.buildQuery({ sendInvitation });
-    return this.makeRequest(`/v2/user/end-users${query}`, 'POST', body);
+    const endpoint = this.buildUserCollectionPath('end-users');
+    return this.makeRequest(`${endpoint}${query}`, 'POST', body);
   }
 
   async updateEndUser(id: number, updates: EndUserPatchPayload): Promise<any> {
     const body = this.pruneUndefined(updates);
-    return this.makeRequest(`/v2/user/end-user/${id}`, 'PATCH', body);
+    return this.makeRequest(this.buildUserEntityPath('end-user', id), 'PATCH', body);
   }
 
   async deleteEndUser(id: number): Promise<any> {
-    return this.makeRequest(`/v2/user/end-user/${id}`, 'DELETE');
+    return this.makeRequest(this.buildUserEntityPath('end-user', id), 'DELETE');
   }
 
   async getTechnicians(): Promise<any> {
-    return this.makeRequest('/v2/user/technicians');
+    return this.makeRequest(this.buildUserCollectionPath('technicians'));
   }
 
-  async deleteEndUser(id: number): Promise<any> {
-    return this.makeRequest(`/v2/user/end-user/${id}`, 'DELETE');
+  async getTechnician(id: number): Promise<any> {
+    return this.makeRequest(this.buildUserEntityPath('technician', id));
   }
 
   async addRoleMembers(roleId: number, userIds: number[]): Promise<any> {
