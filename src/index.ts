@@ -264,6 +264,8 @@ const TOOLS = [
     }
   },
   // Organization CRUD
+  // Delete operations are intentionally omitted because the public API
+  // does not expose organization or location removal endpoints.
   {
     name: 'create_organization',
     description: 'Create a new organization',
@@ -284,30 +286,14 @@ const TOOLS = [
   },
   {
     name: 'update_organization',
-    description: 'Update an organization',
+    description: 'Update an organization (node approval mode is read-only after creation)',
     inputSchema: {
       type: 'object',
       properties: {
         id: { type: 'number', description: 'Organization ID' },
         name: { type: 'string', description: 'Organization name' },
         description: { type: 'string', description: 'Organization description' },
-        nodeApprovalMode: {
-          type: 'string',
-          description: 'Device approval mode (AUTOMATIC, MANUAL, REJECT)',
-          enum: ['AUTOMATIC', 'MANUAL', 'REJECT']
-        },
         tags: { type: 'array', items: { type: 'string' }, description: 'Tags' }
-      },
-      required: ['id']
-    }
-  },
-  {
-    name: 'delete_organization',
-    description: 'Delete an organization',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        id: { type: 'number', description: 'Organization ID' }
       },
       required: ['id']
     }
@@ -339,18 +325,6 @@ const TOOLS = [
         name: { type: 'string', description: 'Location name' },
         address: { type: 'string', description: 'Location address' },
         description: { type: 'string', description: 'Location description' }
-      },
-      required: ['organizationId', 'locationId']
-    }
-  },
-  {
-    name: 'delete_location',
-    description: 'Delete a location',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        organizationId: { type: 'number', description: 'Organization ID' },
-        locationId: { type: 'number', description: 'Location ID' }
       },
       required: ['organizationId', 'locationId']
     }
@@ -849,6 +823,8 @@ class NinjaOneMCPServer {
       let data: any;
       switch (name) {
         // Organization CRUD
+        // Delete operations are intentionally omitted because the public API
+        // does not expose endpoints for removing organizations or locations.
         case 'create_organization':
           data = await this.api.createOrganization(
             args.name,
@@ -862,12 +838,9 @@ class NinjaOneMCPServer {
             args.id,
             args.name,
             args.description,
-            args.nodeApprovalMode,
+            undefined,
             args.tags
           );
-          break;
-        case 'delete_organization':
-          data = await this.api.deleteOrganization(args.id);
           break;
         // Location CRUD
         case 'create_location':
@@ -886,9 +859,6 @@ class NinjaOneMCPServer {
             args.address,
             args.description
           );
-          break;
-        case 'delete_location':
-          data = await this.api.deleteLocation(args.organizationId, args.locationId);
           break;
         default:
           data = await this.callAPIMethod(name, args);

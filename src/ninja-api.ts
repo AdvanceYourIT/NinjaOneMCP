@@ -306,6 +306,8 @@ export class NinjaOneAPI {
   }
 
   // Organization CRUD
+  // Note: DELETE operations for organizations and locations are NOT available
+  // in the Public API and can only be performed via the NinjaOne dashboard.
 
   async createOrganization(
     name: string,
@@ -324,30 +326,19 @@ export class NinjaOneAPI {
     id: number,
     name?: string,
     description?: string,
-    nodeApprovalMode?: string,
+    nodeApprovalMode?: string,  // Note: This field is read-only after creation and cannot be updated
     tags?: string[]
   ): Promise<any> {
     const body: any = {};
     if (name !== undefined) body.name = name;
     if (description !== undefined) body.description = description;
-    if (nodeApprovalMode !== undefined) body.nodeApprovalMode = nodeApprovalMode.toUpperCase();
+    // nodeApprovalMode is intentionally ignored because the public API treats it as read-only after creation.
     if (tags !== undefined) body.tags = tags;
     try {
       return await this.makeRequest(`/v2/organizations/${id}`, 'PATCH', body);
     } catch (error: any) {
       if (typeof error?.message === 'string' && error.message.includes('404')) {
         return this.makeRequest(`/v2/organization/${id}`, 'PATCH', body);
-      }
-      throw error;
-    }
-  }
-
-  async deleteOrganization(id: number): Promise<any> {
-    try {
-      return await this.makeRequest(`/v2/organizations/${id}`, 'DELETE');
-    } catch (error: any) {
-      if (typeof error?.message === 'string' && error.message.includes('404')) {
-        return this.makeRequest(`/v2/organization/${id}`, 'DELETE');
       }
       throw error;
     }
@@ -379,10 +370,6 @@ export class NinjaOneAPI {
     if (address !== undefined) body.address = address;
     if (description !== undefined) body.description = description;
     return this.makeRequest(`/v2/organization/${organizationId}/locations/${locationId}`, 'PATCH', body);
-  }
-
-  async deleteLocation(organizationId: number, locationId: number): Promise<any> {
-    return this.makeRequest(`/v2/organization/${organizationId}/locations/${locationId}`, 'DELETE');
   }
 
   // Contact Management
