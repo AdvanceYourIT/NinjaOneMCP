@@ -1,3 +1,19 @@
+type CreateEndUserPayload = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  organizationId?: number;
+  fullPortalAccess?: boolean;
+};
+
+type EndUserPatchPayload = {
+  firstName?: string;
+  lastName?: string;
+  organizationId?: number;
+  fullPortalAccess?: boolean;
+};
+
 export class NinjaOneAPI {
   private baseUrl: string | null = null;
   private clientId: string;
@@ -190,6 +206,17 @@ export class NinjaOneAPI {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => v !== undefined && query.append(k, v.toString()));
     return query.toString() ? `?${query}` : '';
+  }
+
+  private pruneUndefined<T extends Record<string, unknown>>(payload: T): Partial<T> {
+    const result: Partial<T> = {};
+    (Object.keys(payload) as (keyof T)[]).forEach((key) => {
+      const value = payload[key];
+      if (value !== undefined) {
+        result[key] = value;
+      }
+    });
+    return result;
   }
 
   // Device Management
@@ -437,16 +464,31 @@ export class NinjaOneAPI {
 
   // User Management
   
-  async getEndUsers(): Promise<any> { 
-    return this.makeRequest('/v2/user/end-users'); 
+  async getEndUsers(): Promise<any> {
+    return this.makeRequest('/v2/user/end-users');
   }
 
-  async getEndUser(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/user/end-user/${id}`); 
+  async getEndUser(id: number): Promise<any> {
+    return this.makeRequest(`/v2/user/end-user/${id}`);
   }
 
-  async getTechnicians(): Promise<any> { 
-    return this.makeRequest('/v2/user/technicians'); 
+  async createEndUser(payload: CreateEndUserPayload, sendInvitation?: boolean): Promise<any> {
+    const body = this.pruneUndefined(payload);
+    const query = this.buildQuery({ sendInvitation });
+    return this.makeRequest(`/v2/user/end-users${query}`, 'POST', body);
+  }
+
+  async updateEndUser(id: number, updates: EndUserPatchPayload): Promise<any> {
+    const body = this.pruneUndefined(updates);
+    return this.makeRequest(`/v2/user/end-user/${id}`, 'PATCH', body);
+  }
+
+  async deleteEndUser(id: number): Promise<any> {
+    return this.makeRequest(`/v2/user/end-user/${id}`, 'DELETE');
+  }
+
+  async getTechnicians(): Promise<any> {
+    return this.makeRequest('/v2/user/technicians');
   }
 
   async getTechnician(id: number): Promise<any> { 
