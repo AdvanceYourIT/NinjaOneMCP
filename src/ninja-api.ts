@@ -492,8 +492,58 @@ export class NinjaOneAPI {
     return this.makeRequest('/v2/user/technicians');
   }
 
-  async getTechnician(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/user/technician/${id}`); 
+  async getTechnician(id: number): Promise<any> {
+    return this.makeRequest(`/v2/user/technician/${id}`);
+  }
+
+  async createEndUser(
+    firstName: string,
+    lastName: string,
+    email: string,
+    phone?: string,
+    sendInvitation?: boolean
+  ): Promise<any> {
+    const body: Record<string, string> = {
+      firstName,
+      lastName,
+      email,
+    };
+
+    if (phone !== undefined) {
+      body.phone = phone;
+    }
+
+    const endpoint = `/v2/user/end-users${sendInvitation ? '?sendInvitation=true' : ''}`;
+    return this.makeRequest(endpoint, 'POST', body);
+  }
+
+  async updateEndUser(
+    id: number,
+    firstName?: string,
+    lastName?: string,
+    email?: string,
+    phone?: string
+  ): Promise<any> {
+    const body: Record<string, string> = {};
+
+    if (firstName !== undefined) {
+      body.firstName = firstName;
+    }
+    if (lastName !== undefined) {
+      body.lastName = lastName;
+    }
+    if (email !== undefined) {
+      body.email = email;
+    }
+    if (phone !== undefined) {
+      body.phone = phone;
+    }
+
+    return this.makeRequest(`/v2/user/end-user/${id}`, 'PATCH', body);
+  }
+
+  async deleteEndUser(id: number): Promise<any> {
+    return this.makeRequest(`/v2/user/end-user/${id}`, 'DELETE');
   }
 
   async addRoleMembers(roleId: number, userIds: number[]): Promise<any> {
