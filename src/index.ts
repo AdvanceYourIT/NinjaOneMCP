@@ -371,6 +371,47 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: { id: { type: 'number' } }, required: ['id'] }
   },
   {
+    name: 'create_end_user',
+    description: 'Create a new end user',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        firstName: { type: 'string', description: 'First name of the end user' },
+        lastName: { type: 'string', description: 'Last name of the end user' },
+        email: { type: 'string', description: 'Email address of the end user' },
+        phone: { type: 'string', description: 'Phone number of the end user' },
+        organizationId: { type: 'number', description: 'Organization identifier' },
+        fullPortalAccess: { type: 'boolean', description: 'Grant full portal access' },
+        sendInvitation: { type: 'boolean', description: 'Send an invitation email to the end user' }
+      },
+      required: ['firstName', 'lastName', 'email']
+    }
+  },
+  {
+    name: 'update_end_user',
+    description: 'Update properties of an end user',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'End user identifier' },
+        firstName: { type: 'string', description: 'Updated first name' },
+        lastName: { type: 'string', description: 'Updated last name' },
+        organizationId: { type: 'number', description: 'Updated organization identifier' },
+        fullPortalAccess: { type: 'boolean', description: 'Updated portal access flag' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'delete_end_user',
+    description: 'Delete an end user by ID',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'number', description: 'End user identifier' } },
+      required: ['id']
+    }
+  },
+  {
     name: 'get_technicians',
     description: 'List technicians',
     inputSchema: { type: 'object', properties: {} }
@@ -1004,6 +1045,26 @@ class NinjaOneMCPServer {
         return this.api.getEndUsers();
       case 'get_end_user':
         return this.api.getEndUser(args.id);
+      case 'create_end_user':
+        return this.api.createEndUser(
+          args.firstName,
+          args.lastName,
+          args.email,
+          args.phone,
+          args.organizationId,
+          args.fullPortalAccess,
+          args.sendInvitation
+        );
+      case 'update_end_user':
+        return this.api.updateEndUser(
+          args.id,
+          args.firstName,
+          args.lastName,
+          args.organizationId,
+          args.fullPortalAccess
+        );
+      case 'delete_end_user':
+        return this.api.deleteEndUser(args.id);
       case 'get_technicians':
         return this.api.getTechnicians();
       case 'get_technician':
