@@ -627,7 +627,13 @@ export class NinjaOneAPI {
     return this.makeRequest(`/v2/device/${id}/activities${this.buildQuery({ pageSize, olderThan })}`);
   }
 
-  async getDeviceSoftware(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/software`); 
+  /**
+   * Get installed software for a device.
+   * @param id - Unique device identifier whose software inventory should be returned.
+   * @returns Promise resolving to an array of software objects including name, version, publisher, installDate, and location.
+   * @throws Error if the device cannot be found or if the caller is unauthorized to view the inventory.
+   */
+  async getDeviceSoftware(id: number): Promise<any> {
+    return this.makeRequest(`/v2/device/${id}/software`);
   }
 }
