@@ -135,6 +135,38 @@ await ninjaAPI.rebootDevice(12345, "NORMAL");
 await ninjaAPI.setDeviceMaintenance(12345, "ON");
 ```
 
+#### MCP Tool: Get Installed Software for a Device
+
+```json
+{
+  "method": "tools.call",
+  "params": {
+    "name": "get_device_software",
+    "arguments": {
+      "id": 12345
+    }
+  }
+}
+```
+
+**Response:**
+
+```json
+[
+  {
+    "name": "Microsoft Edge",
+    "version": "124.0.2478.97",
+    "publisher": "Microsoft Corporation",
+    "installDate": "2024-04-02T18:45:00Z",
+    "location": "C:\\Program Files\\Microsoft\\Edge\\Application",
+    "size": 214748364,
+    "productCode": "{F3A0D9B7-1234-4DCC-A560-42E9FF0F0A13}"
+  }
+]
+```
+
+Each object in the response matches the `Application` schema from the NinjaONE API and represents a single installed application.
+
 > ℹ️ **Note:** The NinjaONE public API does not expose dedicated endpoints for reading or setting device owners. Owner
 > information is returned as the `assignedOwnerUid` field in the `getDevice` response.
 
@@ -228,7 +260,14 @@ Build first so `dist/index.js` exists: `npm install && npm run build`. Then rest
 
 The server provides 29+ tools covering all major NinjaONE operations:
 
-**Device Tools**: `get_devices`, `get_device`, `reboot_device`, `get_device_activities`, `search_devices_by_name`, `find_windows11_devices`
+**Device Tools**: `get_devices`, `get_device`, `reboot_device`, `get_device_activities`, `get_device_software`, `search_devices_by_name`, `find_windows11_devices`
+
+#### Device Software Inventory Tool
+
+- **Tool**: `get_device_software`
+- **Description**: Get installed software for a specific device.
+- **Parameters**:
+  - `id` (number, required) – Target device ID.
 
 **Organization Tools**: `get_organizations`, `get_alerts`
 
@@ -266,6 +305,12 @@ Most tools support these common parameters:
 - `pageSize` (number): Results per page (default: 50)
 - `cursor` (string): Pagination cursor for queries
 - `id` (number): Resource identifier for specific operations
+
+### API Endpoints
+
+| Method | Path | Description | Used by |
+| ------ | ---- | ----------- | ------- |
+| GET | `/v2/device/{id}/software` | Returns the installed software inventory for the target device. | `get_device_software` tool |
 
 ### Device Filters
 

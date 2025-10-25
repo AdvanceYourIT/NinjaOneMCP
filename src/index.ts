@@ -113,6 +113,23 @@ const TOOLS = [
       required: ['id']
     }
   },
+  /**
+   * Get installed software inventory for a specific device.
+   * Returns the list of installed applications including version, publisher,
+   * and install date metadata for asset and compliance tracking.
+   * Useful for: software asset management, compliance audits, security assessments.
+   */
+  {
+    name: 'get_device_software',
+    description: 'Get installed software for a specific device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' }
+      },
+      required: ['id']
+    }
+  },
   {
     name: 'get_device_dashboard_url',
     description: 'Get the dashboard URL for a specific device',
@@ -900,6 +917,10 @@ class NinjaOneMCPServer {
             args.address,
             args.description
           );
+          break;
+        case 'get_device_software':
+          // Returns installed software inventory for the target device using the REST API helper.
+          data = await this.api.getDeviceSoftware(args.id);
           break;
         default:
           data = await this.callAPIMethod(name, args);
