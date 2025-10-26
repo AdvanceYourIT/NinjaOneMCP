@@ -7,10 +7,18 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { NinjaOneAPI } from './ninja-api.js';
+import type { MaintenanceUnit, MaintenanceWindowSelection } from './ninja-api.js';
 import { createHttpServer, createSseServer } from './transport/http.js';
 import { config } from 'dotenv';
 
 config();
+
+const MAINTENANCE_UNIT_SECONDS: Record<MaintenanceUnit, number> = {
+  MINUTES: 60,
+  HOURS: 60 * 60,
+  DAYS: 24 * 60 * 60,
+  WEEKS: 7 * 24 * 60 * 60
+};
 
 /**
  * Fixed tool definitions - removed complex filtering, kept all functionality
@@ -70,12 +78,31 @@ const TOOLS = [
   },
   {
     name: 'set_device_maintenance',
-    description: 'Set maintenance mode for a device',
+    description: 'Set maintenance mode for a device, including temporary or permanent windows',
     inputSchema: {
       type: 'object',
       properties: {
         id: { type: 'number', description: 'Device ID' },
-        mode: { type: 'string', enum: ['ON', 'OFF'], description: 'Maintenance mode' }
+        mode: { type: 'string', enum: ['ON', 'OFF'], description: 'Maintenance mode' },
+        duration: {
+          type: 'object',
+          description: 'Duration details when enabling maintenance mode',
+          properties: {
+            permanent: {
+              type: 'boolean',
+              description: 'Set true for permanent maintenance mode'
+            },
+            value: {
+              type: 'number',
+              description: 'Length of the maintenance window (required when not permanent)'
+            },
+            unit: {
+              type: 'string',
+              enum: ['MINUTES', 'HOURS', 'DAYS', 'WEEKS'],
+              description: 'Time unit for the maintenance window (required when not permanent)'
+            }
+          }
+        }
       },
       required: ['id', 'mode']
     }
@@ -962,8 +989,53 @@ class NinjaOneMCPServer {
         return this.api.getDeviceDashboardUrl(args.id);
       case 'reboot_device':
         return this.api.rebootDevice(args.id, args.mode);
-      case 'set_device_maintenance':
-        return this.api.setDeviceMaintenance(args.id, args.mode);
+      case 'set_device_maintenance': {
+        if (typeof args.id !== 'number') {
+          throw new McpError(ErrorCode.InvalidParams, 'Device ID must be a number');
+        }
+        if (args.mode !== 'ON' && args.mode !== 'OFF') {
+          throw new McpError(ErrorCode.InvalidParams, 'Maintenance mode must be ON or OFF');
+        }
+
+        let durationSelection: MaintenanceWindowSelection | undefined;
+        if (args.mode === 'ON') {
+          if (args.duration === null || args.duration === undefined || typeof args.duration !== 'object') {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              'Duration details are required when enabling maintenance mode'
+            );
+          }
+
+          const duration = args.duration;
+          const permanent = duration.permanent === true;
+
+          if (permanent) {
+            durationSelection = { permanent: true };
+          } else {
+            const value = duration.value;
+            const unitRaw = duration.unit;
+            if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+              throw new McpError(ErrorCode.InvalidParams, 'Duration value must be a positive number');
+            }
+            const unit = typeof unitRaw === 'string' ? unitRaw.toUpperCase() : '';
+            if (!Object.prototype.hasOwnProperty.call(MAINTENANCE_UNIT_SECONDS, unit)) {
+              throw new McpError(ErrorCode.InvalidParams, 'Duration unit must be one of MINUTES, HOURS, DAYS, or WEEKS');
+            }
+            const seconds = Math.round(value * MAINTENANCE_UNIT_SECONDS[unit as MaintenanceUnit]);
+            if (seconds < 15 * 60) {
+              throw new McpError(ErrorCode.InvalidParams, 'Maintenance windows must be at least 15 minutes long');
+            }
+            durationSelection = {
+              permanent: false,
+              value,
+              unit: unit as MaintenanceUnit,
+              seconds
+            };
+          }
+        }
+
+        return this.api.setDeviceMaintenance(args.id, args.mode, durationSelection);
+      }
       case 'get_organizations':
         return this.api.getOrganizations(args.pageSize, args.after);
       case 'get_organization':
