@@ -131,9 +131,14 @@ await ninjaAPI.getDevice(12345);
 // Reboot device
 await ninjaAPI.rebootDevice(12345, "NORMAL");
 
-// Set maintenance mode
-await ninjaAPI.setDeviceMaintenance(12345, "ON");
+// Schedule maintenance for two hours
+await ninjaAPI.setDeviceMaintenance(12345, "ON", { durationValue: 2, durationUnit: "HOURS" });
+
+// Enable permanent maintenance mode
+await ninjaAPI.setDeviceMaintenance(12345, "ON", { permanent: true });
 ```
+
+> Maintenance windows shorter than 15 minutes are rejected by the server helper to match NinjaOne API expectations. Start and end timestamps are precomputed before the request and sent as Unix epoch seconds as required by NinjaOne.
 
 #### MCP Tool: Get Installed Software for a Device
 

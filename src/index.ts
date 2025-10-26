@@ -12,6 +12,16 @@ import { config } from 'dotenv';
 
 config();
 
+type MaintenanceDurationUnit = 'MINUTES' | 'HOURS' | 'DAYS' | 'WEEKS';
+
+interface MaintenanceOptionsPayload {
+  permanent: boolean;
+  reasonMessage?: string;
+  disabledFeatures?: string[];
+  startEpochSeconds: number;
+  endEpochSeconds?: number | null;
+}
+
 /**
  * Fixed tool definitions - removed complex filtering, kept all functionality
  */
@@ -75,7 +85,29 @@ const TOOLS = [
       type: 'object',
       properties: {
         id: { type: 'number', description: 'Device ID' },
-        mode: { type: 'string', enum: ['ON', 'OFF'], description: 'Maintenance mode' }
+        mode: { type: 'string', enum: ['ON', 'OFF'], description: 'Maintenance mode' },
+        durationValue: {
+          type: 'number',
+          description: 'Length of the maintenance window when mode=ON (minimum 15 minutes)'
+        },
+        durationUnit: {
+          type: 'string',
+          enum: ['MINUTES', 'HOURS', 'DAYS', 'WEEKS'],
+          description: 'Unit for durationValue when scheduling maintenance'
+        },
+        permanent: {
+          type: 'boolean',
+          description: 'Set to true to keep the device in maintenance indefinitely'
+        },
+        reasonMessage: {
+          type: 'string',
+          description: 'Optional maintenance reason displayed in NinjaOne'
+        },
+        disabledFeatures: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Override the list of features disabled while in maintenance'
+        }
       },
       required: ['id', 'mode']
     }
@@ -962,8 +994,79 @@ class NinjaOneMCPServer {
         return this.api.getDeviceDashboardUrl(args.id);
       case 'reboot_device':
         return this.api.rebootDevice(args.id, args.mode);
-      case 'set_device_maintenance':
-        return this.api.setDeviceMaintenance(args.id, args.mode);
+      case 'set_device_maintenance': {
+        if (typeof args.id !== 'number') {
+          throw new McpError(ErrorCode.InvalidParams, 'Device ID must be a number');
+        }
+        if (args.mode !== 'ON' && args.mode !== 'OFF') {
+          throw new McpError(ErrorCode.InvalidParams, "mode must be 'ON' or 'OFF'");
+        }
+
+        if (args.mode === 'OFF') {
+          return this.api.setDeviceMaintenance(args.id, 'OFF');
+        }
+
+        let permanent = args.permanent === true;
+        if (!permanent && typeof args.durationUnit === 'string' && args.durationUnit.toUpperCase() === 'PERMANENT') {
+          permanent = true;
+        }
+
+        const unitSeconds: Record<MaintenanceDurationUnit, number> = {
+          MINUTES: 60,
+          HOURS: 60 * 60,
+          DAYS: 60 * 60 * 24,
+          WEEKS: 60 * 60 * 24 * 7,
+        };
+
+        let durationSeconds: number | undefined;
+
+        if (!permanent) {
+          if (typeof args.durationValue !== 'number' || !Number.isFinite(args.durationValue) || args.durationValue <= 0) {
+            throw new McpError(ErrorCode.InvalidParams, 'durationValue must be a positive number when permanent is false');
+          }
+
+          const providedUnit = typeof args.durationUnit === 'string' ? args.durationUnit.toUpperCase() : '';
+          if (!Object.prototype.hasOwnProperty.call(unitSeconds, providedUnit)) {
+            throw new McpError(ErrorCode.InvalidParams, 'durationUnit must be one of MINUTES, HOURS, DAYS, or WEEKS');
+          }
+
+          const durationUnit = providedUnit as MaintenanceDurationUnit;
+          const durationValueNumber = args.durationValue as number;
+
+          const totalSeconds = durationValueNumber * unitSeconds[durationUnit];
+          if (totalSeconds < 15 * 60) {
+            throw new McpError(ErrorCode.InvalidParams, 'Maintenance windows must be at least 15 minutes long');
+          }
+
+          durationSeconds = Math.round(totalSeconds);
+        }
+
+        if (args.disabledFeatures !== undefined) {
+          if (!Array.isArray(args.disabledFeatures) || args.disabledFeatures.some((item: any) => typeof item !== 'string')) {
+            throw new McpError(ErrorCode.InvalidParams, 'disabledFeatures must be an array of strings');
+          }
+        }
+
+        const startEpochSeconds = Math.floor(Date.now() / 1000) + 5;
+        let endEpochSeconds: number | null | undefined;
+
+        if (!permanent && typeof durationSeconds === 'number') {
+          endEpochSeconds = startEpochSeconds + durationSeconds;
+        }
+
+        const maintenanceOptions: MaintenanceOptionsPayload = {
+          permanent,
+          reasonMessage: args.reasonMessage,
+          disabledFeatures: args.disabledFeatures,
+          startEpochSeconds,
+        };
+
+        if (typeof endEpochSeconds === 'number' || endEpochSeconds === null) {
+          maintenanceOptions.endEpochSeconds = endEpochSeconds;
+        }
+
+        return this.api.setDeviceMaintenance(args.id, 'ON', maintenanceOptions);
+      }
       case 'get_organizations':
         return this.api.getOrganizations(args.pageSize, args.after);
       case 'get_organization':

@@ -194,17 +194,51 @@ export class NinjaOneAPI {
     async getDeviceDashboardUrl(id) {
         return this.makeRequest(`/v2/device/${id}/dashboard-url`);
     }
-    async setDeviceMaintenance(id, mode) {
+    async setDeviceMaintenance(id, mode, options = {}) {
         if (mode === 'OFF') {
             return this.makeRequest(`/v2/device/${id}/maintenance`, 'DELETE');
         }
-        const now = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
-        const body = {
-            disabledFeatures: ['ALERTS', 'PATCHING', 'AVSCANS', 'TASKS'],
-            start: now + 5, // Start in 5 seconds (buffer for API processing)
-            end: now + (24 * 60 * 60), // End in 24 hours
-            reasonMessage: 'Maintenance mode enabled via API'
+        const startEpochSeconds = Math.floor(Date.now() / 1000) + 5;
+        const permanent = options.permanent === true;
+        const unitSeconds = {
+            MINUTES: 60,
+            HOURS: 60 * 60,
+            DAYS: 60 * 60 * 24,
+            WEEKS: 60 * 60 * 24 * 7,
         };
+        let disabledFeatures = Array.isArray(options.disabledFeatures)
+            ? options.disabledFeatures.filter((feature) => typeof feature === 'string' && feature.trim().length > 0)
+            : undefined;
+        if (!disabledFeatures || disabledFeatures.length === 0) {
+            disabledFeatures = ['ALERTS', 'PATCHING', 'AVSCANS', 'TASKS'];
+        }
+        const body = {
+            disabledFeatures,
+            start: startEpochSeconds,
+            reasonMessage: options.reasonMessage ||
+                (permanent
+                    ? 'Maintenance mode (permanent) enabled via API'
+                    : 'Maintenance mode enabled via API'),
+        };
+        if (!permanent) {
+            const durationUnit = options.durationUnit;
+            const providedSeconds = typeof options.durationSeconds === 'number' ? Math.floor(options.durationSeconds) : undefined;
+            if ((!durationUnit || typeof options.durationValue !== 'number') && typeof providedSeconds !== 'number') {
+                throw new Error('durationUnit and durationValue are required when scheduling maintenance');
+            }
+            let durationSeconds = providedSeconds;
+            if (typeof durationSeconds !== 'number') {
+                const secondsPerUnit = unitSeconds[durationUnit];
+                if (typeof secondsPerUnit !== 'number') {
+                    throw new Error('Invalid durationUnit supplied for maintenance scheduling');
+                }
+                durationSeconds = Math.round(options.durationValue * secondsPerUnit);
+            }
+            if (durationSeconds <= 0) {
+                throw new Error('Maintenance duration must be greater than zero seconds');
+            }
+            body.end = startEpochSeconds + durationSeconds;
+        }
         return this.makeRequest(`/v2/device/${id}/maintenance`, 'PUT', body);
     }
     async rebootDevice(id, mode, reason) {

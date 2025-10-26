@@ -6,6 +6,15 @@ type CreateEndUserPayload = {
     organizationId?: number;
     fullPortalAccess?: boolean;
 };
+type MaintenanceDurationUnit = 'MINUTES' | 'HOURS' | 'DAYS' | 'WEEKS';
+type SetDeviceMaintenanceOptions = {
+    durationValue?: number;
+    durationUnit?: MaintenanceDurationUnit;
+    permanent?: boolean;
+    durationSeconds?: number;
+    reasonMessage?: string;
+    disabledFeatures?: string[];
+};
 export declare class NinjaOneAPI {
     private baseUrl;
     private clientId;
@@ -35,7 +44,7 @@ export declare class NinjaOneAPI {
     getDevices(df?: string, pageSize?: number, after?: number): Promise<any>;
     getDevice(id: number): Promise<any>;
     getDeviceDashboardUrl(id: number): Promise<any>;
-    setDeviceMaintenance(id: number, mode: string): Promise<any>;
+    setDeviceMaintenance(id: number, mode: 'ON' | 'OFF', options?: SetDeviceMaintenanceOptions): Promise<any>;
     rebootDevice(id: number, mode: string, reason?: string): Promise<any>;
     approveDevices(mode: string, deviceIds: number[]): Promise<any>;
     scanDeviceOSPatches(id: number): Promise<any>;

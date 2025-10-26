@@ -7,6 +7,19 @@ type CreateEndUserPayload = {
   fullPortalAccess?: boolean;
 };
 
+type MaintenanceDurationUnit = 'MINUTES' | 'HOURS' | 'DAYS' | 'WEEKS';
+
+type SetDeviceMaintenanceOptions = {
+  permanent?: boolean;
+  startEpochSeconds?: number;
+  endEpochSeconds?: number | null;
+  durationValue?: number;
+  durationUnit?: MaintenanceDurationUnit;
+  durationSeconds?: number;
+  reasonMessage?: string;
+  disabledFeatures?: string[];
+};
+
 export class NinjaOneAPI {
   private baseUrl: string | null = null;
   private clientId: string;
@@ -235,20 +248,93 @@ export class NinjaOneAPI {
     return this.makeRequest(`/v2/device/${id}/dashboard-url`); 
   }
 
-  async setDeviceMaintenance(id: number, mode: string): Promise<any> {
+  async setDeviceMaintenance(
+    id: number,
+    mode: 'ON' | 'OFF',
+    options: SetDeviceMaintenanceOptions = {}
+  ): Promise<any> {
     if (mode === 'OFF') {
-    return this.makeRequest(`/v2/device/${id}/maintenance`, 'DELETE');
+      return this.makeRequest(`/v2/device/${id}/maintenance`, 'DELETE');
     }
-  
-    const now = Math.floor(Date.now() / 1000);  // Current Unix timestamp in seconds
 
-    const body = {
-    disabledFeatures: ['ALERTS', 'PATCHING', 'AVSCANS', 'TASKS'],
-    start: now + 5,  // Start in 5 seconds (buffer for API processing)
-    end: now + (24 * 60 * 60),  // End in 24 hours
-    reasonMessage: 'Maintenance mode enabled via API'
+    const permanent = options.permanent === true;
+
+    const startEpochSeconds = typeof options.startEpochSeconds === 'number'
+      ? Math.floor(options.startEpochSeconds)
+      : Math.floor(Date.now() / 1000) + 5;
+
+    if (!Number.isFinite(startEpochSeconds) || startEpochSeconds <= 0) {
+      throw new Error('startEpochSeconds must be a positive Unix epoch timestamp');
+    }
+
+    let disabledFeatures = Array.isArray(options.disabledFeatures)
+      ? options.disabledFeatures.filter((feature): feature is string => typeof feature === 'string' && feature.trim().length > 0)
+      : undefined;
+
+    if (!disabledFeatures || disabledFeatures.length === 0) {
+      disabledFeatures = ['ALERTS', 'PATCHING', 'AVSCANS', 'TASKS'];
+    }
+
+    const body: Record<string, any> = {
+      disabledFeatures,
+      start: startEpochSeconds,
+      reasonMessage:
+        options.reasonMessage ||
+        (permanent
+          ? 'Maintenance mode (permanent) enabled via API'
+          : 'Maintenance mode enabled via API'),
     };
-  
+
+    if (!permanent) {
+      let endEpochSeconds = options.endEpochSeconds;
+
+      if (typeof endEpochSeconds !== 'number') {
+        let durationSeconds: number | undefined;
+
+        if (typeof options.durationSeconds === 'number') {
+          durationSeconds = Math.floor(options.durationSeconds);
+        } else if (typeof options.durationValue === 'number' && typeof options.durationUnit === 'string') {
+          const unitSeconds: Record<MaintenanceDurationUnit, number> = {
+            MINUTES: 60,
+            HOURS: 60 * 60,
+            DAYS: 60 * 60 * 24,
+            WEEKS: 60 * 60 * 24 * 7,
+          };
+
+          const secondsPerUnit = unitSeconds[options.durationUnit.toUpperCase() as MaintenanceDurationUnit];
+          if (typeof secondsPerUnit !== 'number') {
+            throw new Error('Invalid durationUnit supplied for maintenance scheduling');
+          }
+
+          durationSeconds = Math.round(options.durationValue * secondsPerUnit);
+        }
+
+        if (typeof durationSeconds === 'number') {
+          if (durationSeconds <= 0) {
+            throw new Error('Maintenance duration must be greater than zero seconds');
+          }
+
+          endEpochSeconds = startEpochSeconds + durationSeconds;
+        }
+      }
+
+      if (typeof endEpochSeconds !== 'number') {
+        throw new Error('endEpochSeconds must be supplied when permanent is false');
+      }
+
+      const normalizedEnd = Math.floor(endEpochSeconds);
+      if (normalizedEnd <= startEpochSeconds) {
+        throw new Error('endEpochSeconds must be greater than startEpochSeconds');
+      }
+
+      body.end = normalizedEnd;
+    } else if (typeof options.endEpochSeconds === 'number') {
+      // When permanent is true but a numeric end is provided, honour the explicit value.
+      body.end = Math.floor(options.endEpochSeconds);
+    } else if (options.endEpochSeconds === null) {
+      body.end = null;
+    }
+
     return this.makeRequest(`/v2/device/${id}/maintenance`, 'PUT', body);
   }
 

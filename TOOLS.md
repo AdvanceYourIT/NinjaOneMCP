@@ -82,7 +82,7 @@ This document provides detailed information about the available tools in the Nin
 The server also exposes the following additional tools that cover device control, patch actions, organization details, alert details, users/roles, contacts, and approvals/policies.
 
 ### Device Control
-- `set_device_maintenance`: Set maintenance mode ON/OFF for a device
+- `set_device_maintenance`: Set maintenance mode ON/OFF for a device with timed (minutes/hours/days/weeks) or permanent options
 - `get_device_dashboard_url`: Get device dashboard URL
 - `control_windows_service`: Control a Windows service (START/STOP/RESTART)
 - `configure_windows_service`: Configure a Windows service startup type (e.g., AUTOMATIC/MANUAL/DISABLED)
@@ -139,8 +139,15 @@ Below are minimal example payloads you can use when calling tools via an MCP cli
 ### Device Control
 - `set_device_maintenance`
 ```json
-{ "id": 12345, "mode": "ON" }
+{
+  "id": 12345,
+  "mode": "ON",
+  "durationValue": 2,
+  "durationUnit": "HOURS"
+}
 ```
+
+> Set `permanent: true` to keep a device in maintenance indefinitely. Scheduled windows must be at least 15 minutes long. Start and end values are sent to NinjaOne as Unix epoch seconds automatically.
 
 - `control_windows_service`
 ```json
