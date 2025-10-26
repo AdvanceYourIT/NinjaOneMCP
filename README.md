@@ -131,8 +131,14 @@ await ninjaAPI.getDevice(12345);
 // Reboot device
 await ninjaAPI.rebootDevice(12345, "NORMAL");
 
-// Set maintenance mode
-await ninjaAPI.setDeviceMaintenance(12345, "ON");
+// Set maintenance mode for 2 hours
+await ninjaAPI.setDeviceMaintenance(12345, "ON", { value: 2, unit: "HOURS" });
+
+// Set maintenance mode permanently
+await ninjaAPI.setDeviceMaintenance(12345, "ON", { permanent: true });
+
+// Turn off maintenance mode
+await ninjaAPI.setDeviceMaintenance(12345, "OFF");
 ```
 
 #### MCP Tool: Get Installed Software for a Device
