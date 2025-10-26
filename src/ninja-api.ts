@@ -253,7 +253,10 @@ export class NinjaOneAPI {
       throw new Error('Maintenance duration selection is required when enabling maintenance mode');
     }
 
-    const start = Math.floor(Date.now() + 5000);
+    // The NinjaOne API expects Unix epoch timestamps expressed in seconds.
+    // Schedule maintenance to begin five seconds from "now" to avoid
+    // immediately-expired windows due to API processing delays.
+    const start = Math.floor((Date.now() + 5000) / 1000);
     const reasonMessage = duration.permanent
       ? 'Maintenance mode enabled via API (permanent)'
       : `Maintenance mode enabled via API for ${duration.value} ${duration.unit.toLowerCase()}`;
@@ -265,7 +268,7 @@ export class NinjaOneAPI {
     };
 
     if (duration && !duration.permanent) {
-      body.end = start + (duration.seconds * 1000);
+      body.end = start + duration.seconds;
     }
 
     return this.makeRequest(`/v2/device/${id}/maintenance`, 'PUT', body);
