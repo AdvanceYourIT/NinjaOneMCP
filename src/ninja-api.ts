@@ -253,8 +253,7 @@ export class NinjaOneAPI {
       throw new Error('Maintenance duration selection is required when enabling maintenance mode');
     }
 
-    const startEpochSeconds = Math.floor(Date.now() / 1000) + 5;
-    const start = startEpochSeconds * 1000;
+    const start = Math.floor(Date.now() + 5000);
     const reasonMessage = duration.permanent
       ? 'Maintenance mode enabled via API (permanent)'
       : `Maintenance mode enabled via API for ${duration.value} ${duration.unit.toLowerCase()}`;
