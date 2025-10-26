@@ -95,7 +95,7 @@ Choose the appropriate base URL for your NinjaONE tenant:
 - `get_devices` - List devices with optional filtering and pagination
 - `get_device` - Get detailed information about a specific device
 - `reboot_device` - Reboot a device with normal or forced mode
-- `set_device_maintenance` - Set maintenance mode for a device
+- `set_device_maintenance` - Set maintenance mode for a device, prompting for minutes/hours/days/weeks or a permanent window when enabling
 
 ### System Information
 - `query_antivirus_status` - Query antivirus status across devices

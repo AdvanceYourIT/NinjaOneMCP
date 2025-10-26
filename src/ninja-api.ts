@@ -7,6 +7,11 @@ type CreateEndUserPayload = {
   fullPortalAccess?: boolean;
 };
 
+export type MaintenanceUnit = 'MINUTES' | 'HOURS' | 'DAYS' | 'WEEKS';
+export type MaintenanceWindowSelection =
+  | { permanent: true }
+  | { permanent: false; value: number; unit: MaintenanceUnit; seconds: number };
+
 export class NinjaOneAPI {
   private baseUrl: string | null = null;
   private clientId: string;
@@ -235,20 +240,34 @@ export class NinjaOneAPI {
     return this.makeRequest(`/v2/device/${id}/dashboard-url`); 
   }
 
-  async setDeviceMaintenance(id: number, mode: string): Promise<any> {
+  async setDeviceMaintenance(
+    id: number,
+    mode: string,
+    duration?: MaintenanceWindowSelection
+  ): Promise<any> {
     if (mode === 'OFF') {
-    return this.makeRequest(`/v2/device/${id}/maintenance`, 'DELETE');
+      return this.makeRequest(`/v2/device/${id}/maintenance`, 'DELETE');
     }
-  
-    const now = Math.floor(Date.now() / 1000);  // Current Unix timestamp in seconds
 
-    const body = {
-    disabledFeatures: ['ALERTS', 'PATCHING', 'AVSCANS', 'TASKS'],
-    start: now + 5,  // Start in 5 seconds (buffer for API processing)
-    end: now + (24 * 60 * 60),  // End in 24 hours
-    reasonMessage: 'Maintenance mode enabled via API'
+    if (!duration) {
+      throw new Error('Maintenance duration selection is required when enabling maintenance mode');
+    }
+
+    const start = Math.floor(Date.now() + 5000);
+    const reasonMessage = duration.permanent
+      ? 'Maintenance mode enabled via API (permanent)'
+      : `Maintenance mode enabled via API for ${duration.value} ${duration.unit.toLowerCase()}`;
+
+    const body: Record<string, unknown> = {
+      disabledFeatures: ['ALERTS', 'PATCHING', 'AVSCANS', 'TASKS'],
+      start,
+      reasonMessage
     };
-  
+
+    if (duration && !duration.permanent) {
+      body.end = start + (duration.seconds * 1000);
+    }
+
     return this.makeRequest(`/v2/device/${id}/maintenance`, 'PUT', body);
   }
 
