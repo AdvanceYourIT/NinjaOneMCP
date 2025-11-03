@@ -82,7 +82,7 @@ This document provides detailed information about the available tools in the Nin
 The server also exposes the following additional tools that cover device control, patch actions, organization details, alert details, users/roles, contacts, and approvals/policies.
 
 ### Device Control
-- `set_device_maintenance`: Set maintenance mode ON/OFF for a device
+- `set_device_maintenance`: Set maintenance mode ON/OFF for a device. When enabling it, the operator will choose a minutes/hours/days/weeks duration or mark it permanent.
 - `get_device_dashboard_url`: Get device dashboard URL
 - `control_windows_service`: Control a Windows service (START/STOP/RESTART)
 - `configure_windows_service`: Configure a Windows service startup type (e.g., AUTOMATIC/MANUAL/DISABLED)
@@ -125,6 +125,7 @@ The server also exposes the following additional tools that cover device control
 ### Device Approvals & Policies
 - `approve_devices`: Approve or deny multiple devices (by IDs)
 - `get_device_policy_overrides`: Get device policy overrides
+- `reset_device_policy_overrides`: Reset/remove all policy overrides for a device
 - `get_policies`: List policies (optionally templates only)
 
 ### Region Utilities
@@ -138,7 +139,15 @@ Below are minimal example payloads you can use when calling tools via an MCP cli
 ### Device Control
 - `set_device_maintenance`
 ```json
-{ "id": 12345, "mode": "ON" }
+{ "id": 12345, "mode": "ON", "duration": { "value": 90, "unit": "MINUTES" } }
+```
+
+```json
+{ "id": 12345, "mode": "ON", "duration": { "permanent": true } }
+```
+
+```json
+{ "id": 12345, "mode": "OFF" }
 ```
 
 - `control_windows_service`
@@ -184,17 +193,6 @@ Below are minimal example payloads you can use when calling tools via an MCP cli
 - `get_device_alerts`
 ```json
 { "id": 12345, "lang": "en-US" }
-```
-
-### Device Owner
-- `get_device_owner`
-```json
-{ "id": 12345 }
-```
-
-- `set_device_owner`
-```json
-{ "id": 12345, "ownerUid": "user-uid-abc" }
 ```
 
 ### Device Dashboard URL

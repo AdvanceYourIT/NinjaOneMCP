@@ -1,3 +1,17 @@
+type CreateEndUserPayload = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  organizationId?: number;
+  fullPortalAccess?: boolean;
+};
+
+export type MaintenanceUnit = 'MINUTES' | 'HOURS' | 'DAYS' | 'WEEKS';
+export type MaintenanceWindowSelection =
+  | { permanent: true }
+  | { permanent: false; value: number; unit: MaintenanceUnit; seconds: number };
+
 export class NinjaOneAPI {
   private baseUrl: string | null = null;
   private clientId: string;
@@ -192,6 +206,25 @@ export class NinjaOneAPI {
     return query.toString() ? `?${query}` : '';
   }
 
+  private pruneUndefined<T extends Record<string, unknown>>(payload: T): Partial<T> {
+    const result: Partial<T> = {};
+    (Object.keys(payload) as (keyof T)[]).forEach((key) => {
+      const value = payload[key];
+      if (value !== undefined) {
+        result[key] = value;
+      }
+    });
+    return result;
+  }
+
+  private buildUserCollectionPath(type: 'end-users' | 'technicians'): string {
+    return `/v2/user/${type}`;
+  }
+
+  private buildUserEntityPath(type: 'end-user' | 'technician', id: number): string {
+    return `/v2/user/${type}/${id}`;
+  }
+
   // Device Management
   
   async getDevices(df?: string, pageSize?: number, after?: number): Promise<any> {
@@ -207,20 +240,37 @@ export class NinjaOneAPI {
     return this.makeRequest(`/v2/device/${id}/dashboard-url`); 
   }
 
-  async setDeviceMaintenance(id: number, mode: string): Promise<any> {
+  async setDeviceMaintenance(
+    id: number,
+    mode: string,
+    duration?: MaintenanceWindowSelection
+  ): Promise<any> {
     if (mode === 'OFF') {
-    return this.makeRequest(`/v2/device/${id}/maintenance`, 'DELETE');
+      return this.makeRequest(`/v2/device/${id}/maintenance`, 'DELETE');
     }
-  
-    const now = Math.floor(Date.now() / 1000);  // Current Unix timestamp in seconds
 
-    const body = {
-    disabledFeatures: ['ALERTS', 'PATCHING', 'AVSCANS', 'TASKS'],
-    start: now + 5,  // Start in 5 seconds (buffer for API processing)
-    end: now + (24 * 60 * 60),  // End in 24 hours
-    reasonMessage: 'Maintenance mode enabled via API'
+    if (!duration) {
+      throw new Error('Maintenance duration selection is required when enabling maintenance mode');
+    }
+
+    // The NinjaOne API expects Unix epoch timestamps expressed in seconds.
+    // Schedule maintenance to begin five seconds from "now" to avoid
+    // immediately-expired windows due to API processing delays.
+    const start = Math.floor((Date.now() + 5000) / 1000);
+    const reasonMessage = duration.permanent
+      ? 'Maintenance mode enabled via API (permanent)'
+      : `Maintenance mode enabled via API for ${duration.value} ${duration.unit.toLowerCase()}`;
+
+    const body: Record<string, unknown> = {
+      disabledFeatures: ['ALERTS', 'PATCHING', 'AVSCANS', 'TASKS'],
+      start,
+      reasonMessage
     };
-  
+
+    if (duration && !duration.permanent) {
+      body.end = start + duration.seconds;
+    }
+
     return this.makeRequest(`/v2/device/${id}/maintenance`, 'PUT', body);
   }
 
@@ -237,9 +287,11 @@ export class NinjaOneAPI {
   }
 
   // Device Patches
-  
-  async scanDeviceOSPatches(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/patch/os/scan`, 'POST'); 
+
+  // Patch approval or rejection is only available via the NinjaOne dashboard or policies;
+  // the public API does not provide endpoints for that workflow.
+  async scanDeviceOSPatches(id: number): Promise<any> {
+    return this.makeRequest(`/v2/device/${id}/patch/os/scan`, 'POST');
   }
 
   async applyDeviceOSPatches(id: number, patches: any[]): Promise<any> {
@@ -270,8 +322,12 @@ export class NinjaOneAPI {
     return this.makeRequest(`/v2/policies${this.buildQuery({ templateOnly })}`);
   }
 
-  async getDevicePolicyOverrides(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/policy/overrides`); 
+  async getDevicePolicyOverrides(id: number): Promise<any> {
+    return this.makeRequest(`/v2/device/${id}/policy/overrides`);
+  }
+
+  async resetDevicePolicyOverrides(id: number): Promise<any> {
+    return this.makeRequest(`/v2/device/${id}/policy/overrides`, 'DELETE');
   }
 
   // Organization Management
@@ -299,10 +355,77 @@ export class NinjaOneAPI {
     return this.makeRequest('/v2/organization/generate-installer', 'POST', body);
   }
 
+  // Organization CRUD
+  // Note: DELETE operations for organizations and locations are NOT available
+  // in the Public API and can only be performed via the NinjaOne dashboard.
+
+  async createOrganization(
+    name: string,
+    description?: string,
+    nodeApprovalMode?: string,
+    tags?: string[]
+  ): Promise<any> {
+    const body: any = { name };
+    if (description) body.description = description;
+    if (nodeApprovalMode) body.nodeApprovalMode = nodeApprovalMode.toUpperCase();
+    if (tags) body.tags = tags;
+    return this.makeRequest('/v2/organizations', 'POST', body);
+  }
+
+  async updateOrganization(
+    id: number,
+    name?: string,
+    description?: string,
+    nodeApprovalMode?: string,  // Note: This field is read-only after creation and cannot be updated
+    tags?: string[]
+  ): Promise<any> {
+    const body: any = {};
+    if (name !== undefined) body.name = name;
+    if (description !== undefined) body.description = description;
+    // nodeApprovalMode is intentionally ignored because the public API treats it as read-only after creation.
+    if (tags !== undefined) body.tags = tags;
+    try {
+      return await this.makeRequest(`/v2/organizations/${id}`, 'PATCH', body);
+    } catch (error: any) {
+      if (typeof error?.message === 'string' && error.message.includes('404')) {
+        return this.makeRequest(`/v2/organization/${id}`, 'PATCH', body);
+      }
+      throw error;
+    }
+  }
+
+  // Location CRUD
+
+  async createLocation(
+    organizationId: number,
+    name: string,
+    address?: string,
+    description?: string
+  ): Promise<any> {
+    const body: any = { name };
+    if (address) body.address = address;
+    if (description) body.description = description;
+    return this.makeRequest(`/v2/organization/${organizationId}/locations`, 'POST', body);
+  }
+
+  async updateLocation(
+    organizationId: number,
+    locationId: number,
+    name?: string,
+    address?: string,
+    description?: string
+  ): Promise<any> {
+    const body: any = {};
+    if (name !== undefined) body.name = name;
+    if (address !== undefined) body.address = address;
+    if (description !== undefined) body.description = description;
+    return this.makeRequest(`/v2/organization/${organizationId}/locations/${locationId}`, 'PATCH', body);
+  }
+
   // Contact Management
-  
-  async getContacts(): Promise<any> { 
-    return this.makeRequest('/v2/contacts'); 
+
+  async getContacts(): Promise<any> {
+    return this.makeRequest('/v2/contacts');
   }
 
   async getContact(id: number): Promise<any> { 
@@ -364,20 +487,46 @@ export class NinjaOneAPI {
 
   // User Management
   
-  async getEndUsers(): Promise<any> { 
-    return this.makeRequest('/v2/user/end-users'); 
+  async getEndUsers(): Promise<any> {
+    return this.makeRequest(this.buildUserCollectionPath('end-users'));
   }
 
-  async getEndUser(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/user/end-user/${id}`); 
+  async getEndUser(id: number): Promise<any> {
+    return this.makeRequest(this.buildUserEntityPath('end-user', id));
   }
 
-  async getTechnicians(): Promise<any> { 
-    return this.makeRequest('/v2/user/technicians'); 
+  async createEndUser(payload: CreateEndUserPayload, sendInvitation?: boolean): Promise<any> {
+    const body = this.pruneUndefined(payload);
+    const query = this.buildQuery({ sendInvitation });
+    const endpoint = this.buildUserCollectionPath('end-users');
+    return this.makeRequest(`${endpoint}${query}`, 'POST', body);
   }
 
-  async getTechnician(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/user/technician/${id}`); 
+  async updateEndUser(
+    id: number,
+    firstName?: string,
+    lastName?: string,
+    email?: string,
+    phone?: string  // Note: Phone field is read-only after creation and cannot be updated
+  ): Promise<any> {
+    const body: any = {};
+    if (firstName !== undefined) body.firstName = firstName;
+    if (lastName !== undefined) body.lastName = lastName;
+    if (email !== undefined) body.email = email;
+    if (phone !== undefined) body.phone = phone;  // This will be ignored by the API
+    return this.makeRequest(this.buildUserEntityPath('end-user', id), 'PATCH', body);
+  }
+
+  async deleteEndUser(id: number): Promise<any> {
+    return this.makeRequest(this.buildUserEntityPath('end-user', id), 'DELETE');
+  }
+
+  async getTechnicians(): Promise<any> {
+    return this.makeRequest(this.buildUserCollectionPath('technicians'));
+  }
+
+  async getTechnician(id: number): Promise<any> {
+    return this.makeRequest(this.buildUserEntityPath('technician', id));
   }
 
   async addRoleMembers(roleId: number, userIds: number[]): Promise<any> {
@@ -500,7 +649,13 @@ export class NinjaOneAPI {
     return this.makeRequest(`/v2/device/${id}/activities${this.buildQuery({ pageSize, olderThan })}`);
   }
 
-  async getDeviceSoftware(id: number): Promise<any> { 
-    return this.makeRequest(`/v2/device/${id}/software`); 
+  /**
+   * Get installed software for a device.
+   * @param id - Unique device identifier whose software inventory should be returned.
+   * @returns Promise resolving to an array of software objects including name, version, publisher, installDate, and location.
+   * @throws Error if the device cannot be found or if the caller is unauthorized to view the inventory.
+   */
+  async getDeviceSoftware(id: number): Promise<any> {
+    return this.makeRequest(`/v2/device/${id}/software`);
   }
 }

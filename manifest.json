@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "ninjaone-rmm",
   "display_name": "NinjaONE RMM Server",
-  "version": "1.2.11",
+  "version": "1.2.13",
   "description": "Professional MCP server for NinjaONE RMM platform with comprehensive device management, monitoring, patch management, and automation capabilities",
   "author": {
     "name": "Lungshot",
@@ -17,11 +17,11 @@
   },
   "server": {
     "type": "node",
-    "entry_point": "server/index.js",
+    "entry_point": "dist/index.js",
     "mcp_config": {
       "command": "node",
       "args": [
-        "${__dirname}/server/index.js"
+        "${__dirname}/dist/index.js"
       ],
       "env": {
         "NINJA_BASE_URL": "${user_config.base_url}",

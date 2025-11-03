@@ -7,10 +7,18 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { NinjaOneAPI } from './ninja-api.js';
+import type { MaintenanceUnit, MaintenanceWindowSelection } from './ninja-api.js';
 import { createHttpServer, createSseServer } from './transport/http.js';
 import { config } from 'dotenv';
 
 config();
+
+const MAINTENANCE_UNIT_SECONDS: Record<MaintenanceUnit, number> = {
+  MINUTES: 60,
+  HOURS: 60 * 60,
+  DAYS: 24 * 60 * 60,
+  WEEKS: 7 * 24 * 60 * 60
+};
 
 /**
  * Fixed tool definitions - removed complex filtering, kept all functionality
@@ -70,12 +78,31 @@ const TOOLS = [
   },
   {
     name: 'set_device_maintenance',
-    description: 'Set maintenance mode for a device',
+    description: 'Set maintenance mode for a device, including temporary or permanent windows',
     inputSchema: {
       type: 'object',
       properties: {
         id: { type: 'number', description: 'Device ID' },
-        mode: { type: 'string', enum: ['ON', 'OFF'], description: 'Maintenance mode' }
+        mode: { type: 'string', enum: ['ON', 'OFF'], description: 'Maintenance mode' },
+        duration: {
+          type: 'object',
+          description: 'Duration details when enabling maintenance mode',
+          properties: {
+            permanent: {
+              type: 'boolean',
+              description: 'Set true for permanent maintenance mode'
+            },
+            value: {
+              type: 'number',
+              description: 'Length of the maintenance window (required when not permanent)'
+            },
+            unit: {
+              type: 'string',
+              enum: ['MINUTES', 'HOURS', 'DAYS', 'WEEKS'],
+              description: 'Time unit for the maintenance window (required when not permanent)'
+            }
+          }
+        }
       },
       required: ['id', 'mode']
     }
@@ -109,6 +136,34 @@ const TOOLS = [
       properties: {
         id: { type: 'number', description: 'Device ID' },
         pageSize: { type: 'number', description: 'Number of results per page' }
+      },
+      required: ['id']
+    }
+  },
+  /**
+   * Get installed software inventory for a specific device.
+   * Returns the list of installed applications including version, publisher,
+   * and install date metadata for asset and compliance tracking.
+   * Useful for: software asset management, compliance audits, security assessments.
+   */
+  {
+    name: 'get_device_software',
+    description: 'Get installed software for a specific device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'get_device_software',
+    description: 'Get installed software for a specific device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' }
       },
       required: ['id']
     }
@@ -263,6 +318,72 @@ const TOOLS = [
       required: ['installerType']
     }
   },
+  // Organization CRUD
+  // Delete operations are intentionally omitted because the public API
+  // does not expose organization or location removal endpoints.
+  {
+    name: 'create_organization',
+    description: 'Create a new organization',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Organization name' },
+        description: { type: 'string', description: 'Organization description' },
+        nodeApprovalMode: {
+          type: 'string',
+          description: 'Device approval mode (AUTOMATIC, MANUAL, REJECT)',
+          enum: ['AUTOMATIC', 'MANUAL', 'REJECT']
+        },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Tags' }
+      },
+      required: ['name']
+    }
+  },
+  {
+    name: 'update_organization',
+    description: 'Update an organization (node approval mode is read-only after creation)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Organization ID' },
+        name: { type: 'string', description: 'Organization name' },
+        description: { type: 'string', description: 'Organization description' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Tags' }
+      },
+      required: ['id']
+    }
+  },
+
+  // Location CRUD
+  {
+    name: 'create_location',
+    description: 'Create a new location for an organization',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        organizationId: { type: 'number', description: 'Organization ID' },
+        name: { type: 'string', description: 'Location name' },
+        address: { type: 'string', description: 'Location address' },
+        description: { type: 'string', description: 'Location description' }
+      },
+      required: ['organizationId', 'name']
+    }
+  },
+  {
+    name: 'update_location',
+    description: 'Update a location',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        organizationId: { type: 'number', description: 'Organization ID' },
+        locationId: { type: 'number', description: 'Location ID' },
+        name: { type: 'string', description: 'Location name' },
+        address: { type: 'string', description: 'Location address' },
+        description: { type: 'string', description: 'Location description' }
+      },
+      required: ['organizationId', 'locationId']
+    }
+  },
 
   // Alerts - details
   {
@@ -303,6 +424,47 @@ const TOOLS = [
     name: 'get_end_user',
     description: 'Get an end user by ID',
     inputSchema: { type: 'object', properties: { id: { type: 'number' } }, required: ['id'] }
+  },
+  {
+    name: 'create_end_user',
+    description: 'Create a new end user',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        firstName: { type: 'string', description: 'First name of the end user' },
+        lastName: { type: 'string', description: 'Last name of the end user' },
+        email: { type: 'string', description: 'Email address of the end user' },
+        phone: { type: 'string', description: 'Phone number of the end user' },
+        organizationId: { type: 'number', description: 'Organization identifier' },
+        fullPortalAccess: { type: 'boolean', description: 'Grant full portal access' },
+        sendInvitation: { type: 'boolean', description: 'Send an invitation email to the end user' }
+      },
+      required: ['firstName', 'lastName', 'email']
+    }
+  },
+  {
+    name: 'update_end_user',
+    description: 'Update an end user (Note: phone field cannot be changed after creation)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'End user ID' },
+        firstName: { type: 'string', description: 'First name' },
+        lastName: { type: 'string', description: 'Last name' },
+        email: { type: 'string', description: 'Email address' },
+        phone: { type: 'string', description: 'Phone number (read-only after creation)' }
+      },
+      required: ['id']
+    }
+  },
+  {
+    name: 'delete_end_user',
+    description: 'Delete an end user by ID',
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'number', description: 'End user identifier' } },
+      required: ['id']
+    }
   },
   {
     name: 'get_technicians',
@@ -384,6 +546,17 @@ const TOOLS = [
     name: 'get_device_policy_overrides',
     description: 'Get policy overrides for a device',
     inputSchema: { type: 'object', properties: { id: { type: 'number' } }, required: ['id'] }
+  },
+  {
+    name: 'reset_device_policy_overrides',
+    description: 'Reset/remove all policy overrides for a device',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'Device ID' }
+      },
+      required: ['id']
+    }
   },
   {
     name: 'get_policies',
@@ -743,7 +916,54 @@ class NinjaOneMCPServer {
 
   private async routeToolCall(name: string, args: any) {
     try {
-      const data = await this.callAPIMethod(name, args);
+      let data: any;
+      switch (name) {
+        // Organization CRUD
+        // Delete operations are intentionally omitted because the public API
+        // does not expose endpoints for removing organizations or locations.
+        case 'create_organization':
+          data = await this.api.createOrganization(
+            args.name,
+            args.description,
+            args.nodeApprovalMode,
+            args.tags
+          );
+          break;
+        case 'update_organization':
+          data = await this.api.updateOrganization(
+            args.id,
+            args.name,
+            args.description,
+            undefined,
+            args.tags
+          );
+          break;
+        // Location CRUD
+        case 'create_location':
+          data = await this.api.createLocation(
+            args.organizationId,
+            args.name,
+            args.address,
+            args.description
+          );
+          break;
+        case 'update_location':
+          data = await this.api.updateLocation(
+            args.organizationId,
+            args.locationId,
+            args.name,
+            args.address,
+            args.description
+          );
+          break;
+        case 'get_device_software':
+          // Returns installed software inventory for the target device using the REST API helper.
+          data = await this.api.getDeviceSoftware(args.id);
+          break;
+        default:
+          data = await this.callAPIMethod(name, args);
+          break;
+      }
       return {
         content: [{
           type: 'text',
@@ -769,8 +989,53 @@ class NinjaOneMCPServer {
         return this.api.getDeviceDashboardUrl(args.id);
       case 'reboot_device':
         return this.api.rebootDevice(args.id, args.mode);
-      case 'set_device_maintenance':
-        return this.api.setDeviceMaintenance(args.id, args.mode);
+      case 'set_device_maintenance': {
+        if (typeof args.id !== 'number') {
+          throw new McpError(ErrorCode.InvalidParams, 'Device ID must be a number');
+        }
+        if (args.mode !== 'ON' && args.mode !== 'OFF') {
+          throw new McpError(ErrorCode.InvalidParams, 'Maintenance mode must be ON or OFF');
+        }
+
+        let durationSelection: MaintenanceWindowSelection | undefined;
+        if (args.mode === 'ON') {
+          if (args.duration === null || args.duration === undefined || typeof args.duration !== 'object') {
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              'Duration details are required when enabling maintenance mode'
+            );
+          }
+
+          const duration = args.duration;
+          const permanent = duration.permanent === true;
+
+          if (permanent) {
+            durationSelection = { permanent: true };
+          } else {
+            const value = duration.value;
+            const unitRaw = duration.unit;
+            if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+              throw new McpError(ErrorCode.InvalidParams, 'Duration value must be a positive number');
+            }
+            const unit = typeof unitRaw === 'string' ? unitRaw.toUpperCase() : '';
+            if (!Object.prototype.hasOwnProperty.call(MAINTENANCE_UNIT_SECONDS, unit)) {
+              throw new McpError(ErrorCode.InvalidParams, 'Duration unit must be one of MINUTES, HOURS, DAYS, or WEEKS');
+            }
+            const seconds = Math.round(value * MAINTENANCE_UNIT_SECONDS[unit as MaintenanceUnit]);
+            if (seconds < 15 * 60) {
+              throw new McpError(ErrorCode.InvalidParams, 'Maintenance windows must be at least 15 minutes long');
+            }
+            durationSelection = {
+              permanent: false,
+              value,
+              unit: unit as MaintenanceUnit,
+              seconds
+            };
+          }
+        }
+
+        return this.api.setDeviceMaintenance(args.id, args.mode, durationSelection);
+      }
       case 'get_organizations':
         return this.api.getOrganizations(args.pageSize, args.after);
       case 'get_organization':
@@ -791,6 +1056,11 @@ class NinjaOneMCPServer {
         return this.api.getDeviceAlerts(args.id, args.lang);
       case 'get_device_activities':
         return this.api.getDeviceActivities(args.id, args.pageSize);
+      case 'get_device_software':
+        if (typeof args.id !== 'number') {
+          throw new McpError(ErrorCode.InvalidParams, 'Device ID must be a number');
+        }
+        return this.api.getDeviceSoftware(args.id);
       case 'search_devices_by_name':
         return this.searchDevicesByName(args.name, args.limit || 10);
       case 'find_windows11_devices':
@@ -884,6 +1154,28 @@ class NinjaOneMCPServer {
         return this.api.getEndUsers();
       case 'get_end_user':
         return this.api.getEndUser(args.id);
+      case 'create_end_user':
+        return this.api.createEndUser(
+          {
+            firstName: args.firstName,
+            lastName: args.lastName,
+            email: args.email,
+            phone: args.phone,
+            organizationId: args.organizationId,
+            fullPortalAccess: args.fullPortalAccess
+          },
+          args.sendInvitation
+        );
+      case 'update_end_user':
+        return this.api.updateEndUser(
+          args.id,
+          args.firstName,
+          args.lastName,
+          args.email,
+          args.phone
+        );
+      case 'delete_end_user':
+        return this.api.deleteEndUser(args.id);
       case 'get_technicians':
         return this.api.getTechnicians();
       case 'get_technician':
@@ -910,6 +1202,8 @@ class NinjaOneMCPServer {
         return this.api.approveDevices(args.mode, args.deviceIds);
       case 'get_device_policy_overrides':
         return this.api.getDevicePolicyOverrides(args.id);
+      case 'reset_device_policy_overrides':
+        return this.api.resetDevicePolicyOverrides(args.id);
       case 'get_policies':
         return this.api.getPolicies(args.templateOnly);
 
