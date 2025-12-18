@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "ninjaone-rmm",
   "display_name": "NinjaONE RMM Server",
-  "version": "1.2.13",
+  "version": "1.2.14",
   "description": "Professional MCP server for NinjaONE RMM platform with comprehensive device management, monitoring, patch management, and automation capabilities",
   "author": {
     "name": "Lungshot",
@@ -58,8 +58,7 @@
     }
   },
   "compatibility": {
-    "platforms": ["darwin", "win32", "linux"],
-    "node": ">=18.0.0 <21.0.0"
+    "platforms": ["darwin", "win32", "linux"]
   },
   "keywords": [
     "ninjaone",
